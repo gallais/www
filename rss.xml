@@ -116,7 +116,7 @@ travis generating the standard library&#39;s documentation.&lt;/p&gt;
 
 
 
-&lt;h3&gt;Encrypting Dropbox credencials&lt;/h3&gt;
+&lt;h3&gt;Encrypting Dropbox credentials&lt;/h3&gt;
 
 
 
@@ -127,7 +127,7 @@ in this little series of experiments: &lt;a href=&quot;https://github.com/andrea
 Andrea Fabrizi&lt;/a&gt;&#39;s &lt;a href=&quot;https://github.com/andreafabrizi/Dropbox-Uploader&quot;&gt;
 Dropbox-Uploader&lt;/a&gt; makes interacting with Dropbox very easy! And
 using travis&#39; hability to &lt;a href=&quot;http://docs.travis-ci.com/user/encrypting-files/&quot;&gt;
-encrypt files&lt;/a&gt;, we can safely upload our credencials to a public
+encrypt files&lt;/a&gt;, we can safely upload our credentials to a public
 repository.&lt;/p&gt;
 
 
@@ -196,7 +196,7 @@ the right direction.&lt;/p&gt;
 
 
 &lt;p&gt;To access the tarballs hosted on Dropbox using the command-line,
-I have the impression that one needs my credencials. However they
+I have the impression that one needs my credentials. However they
 are &lt;a href=&quot;https://www.dropbox.com/sh/yn8pr2jorbzsy2g/AABc445eZQIwnXqEuPody0pga?dl=0&quot;&gt;
 available for all to download&lt;/a&gt; so there may be a way to automate
 that. If you have suggestions with respect to alternative hosting
