@@ -1,4 +1,190 @@
-<rss version="2.0"><channel><title>gallais&#39; blog</title><link>http://blog.gallais.org</link><description>gallais&#39; blog</description><item><title>Resource Aware Contexts and Proof Search for ILL</title><link>http://blog.gallais.org/linear-proof-search.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Resource Aware Contexts and Proof Search for ILL&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://github.com/gallais/proof-search-ILLWiL&quot;&gt;Github repository&lt;/a&gt;&lt;/li&gt;
+<rss version="2.0"><channel><title>gallais&#39; blog</title><link>http://blog.gallais.org</link><description>gallais&#39; blog</description><item><title>Currying using Canonical Structures</title><link>http://blog.gallais.org/canonical-structures-currying.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Currying using Canonical Structures&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://hal.inria.fr/hal-00816703&quot;&gt;Mahboubi &amp; Tassi&#39;s paper&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://gist.github.com/gallais/d3dae1f7d5fe9e9d5ab5&quot;&gt;Universe for Currying&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://gist.github.com/gallais/8923120a41396bb21615&quot;&gt;Canonical Structures for Currying&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;
+
+
+
+&lt;p id=chapo&gt;I have been meaning to have a look at Canonical Structures at
+some point since Beta Ziliani told me about 4 years ago that all the Ltac
+magic I was doing to reify expressions could be handed over to the inference
+engine. Yesterday I was finally given a simple opportunity to play with
+them. Here&#39;s the result.&lt;/p&gt;
+
+
+
+&lt;p&gt;Whilst reading &lt;a href=&quot;http://coq-blog.clarus.me/simple-unit-testing-in-coq.html&quot;&gt;a
+completely unrelated blog post&lt;/a&gt; about unit testing in Coq, I stumbled
+upon a series of almost identical functions named &lt;tt&gt;List.map_pair&lt;/tt&gt;,
+&lt;tt&gt;List.map_triple&lt;/tt&gt; and &lt;tt&gt;List.map_quad&lt;/tt&gt;. I thought to myself
+that, surely, it should be possible in a language with type-level computations
+to do away with the sort of &lt;a href=&quot;http://hackage.haskell.org/package/base-4.8.1.0/docs/Data-List.html#v:zipWith3&quot;&gt;monstrosities&lt;/a&gt;
+one can sometime find in Haskell libraries.
+Introducing &lt;a href=&quot;https://gist.github.com/gallais/d3dae1f7d5fe9e9d5ab5&quot;&gt;a
+Universe closed under products&lt;/a&gt; can indeed allow the definition of
+generic (un)currying functions. However we are still left with the burden
+of reifying the domain of the function we want to curry. Annoying.&lt;/p&gt;
+
+
+
+&lt;h2&gt;&lt;center&gt;Canonical Structures to the rescue!&lt;/center&gt;&lt;/h2&gt;
+
+
+
+&lt;p&gt;That is when Canonical Structures come to the rescue: they are a way
+to give hints to the unification algorithm when it faces a problem of the
+shape &lt;tt&gt;project ?x ~ term&lt;/tt&gt; where &lt;tt&gt;project&lt;/tt&gt; is a projection
+out of a record, &lt;tt&gt;?x&lt;/tt&gt; is a unification variable and &lt;tt&gt;term&lt;/tt&gt;
+is... a term. Because this unification step can lead to new ones, we
+effectively have a way to encode a prolog-like proof search. And we are
+going to use it to generate the right sort of currying.&lt;/p&gt;
+
+
+
+&lt;h3&gt;The Class of domains which can be curried&lt;/h3&gt;
+
+
+
+&lt;p&gt;This whole development is following quite closely the really good
+introduction &lt;a href=&quot;https://hal.inria.fr/hal-00816703&quot;&gt;Canonical Structures
+for the working Coq user&lt;/a&gt;. We start by defining a module which
+contains first and foremost a Record &lt;tt&gt;class&lt;/tt&gt; indexed by a domain
+&lt;tt&gt;Dom&lt;/tt&gt; and a type constructor &lt;tt&gt;Curr&lt;/tt&gt; such that &lt;tt&gt;Curr a&lt;/tt&gt;
+is a curried version of the function space &lt;tt&gt;Dom -&gt; a&lt;/tt&gt; as witnessed
+by the &lt;tt&gt;Fun&lt;/tt&gt; stored in the record.&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;Module Currying.
+  Record class (Dom : Type) (Curr : Type -&gt; Type) :=
+         Class { Fun : forall cod, Curr cod -&gt; (Dom -&gt; cod) }.
+&lt;/p&gt;
+
+
+
+&lt;p&gt;We then define a structure called &lt;tt&gt;type&lt;/tt&gt; packing together
+a &lt;tt&gt;Dom&lt;/tt&gt;, a &lt;tt&gt;Curr&lt;/tt&gt; and the &lt;tt&gt;class Dom Curr&lt;/tt&gt; evidence
+that they are related.&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;  Structure type := Pack { dom      : Type
+                         ; curr     : Type -&gt; Type
+                         ; class_of : class dom curr }.
+&lt;/p&gt;
+
+
+
+&lt;p&gt;Now, remember that canonical structures are used to give hints to the
+unification algorithm when facing &lt;tt&gt;project ?x ~ term&lt;/tt&gt; problems.
+Having this &lt;tt&gt;type&lt;/tt&gt; structure will allow us to generate
+&lt;tt&gt;dom ?x ~ something&lt;/tt&gt; unification problems which means that the
+unification algorithm will be able to infer from the shape of the domain
+what its curried version is. In order to trigger these unification problems,
+we are defining a special version of &lt;tt&gt;map&lt;/tt&gt; on &lt;tt&gt;list&lt;/tt&gt;:&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;  Definition flippedmap (Curry : type) :
+    forall cod, list (dom Curry) -&gt; curr Curry cod -&gt; list cod.
+    refine (let &#39;Pack _ _ (Class fc) := Curry
+            in fun cod xs f =&gt; List.map _ xs) ; apply fc, f.
+  Defined.
+&lt;/p&gt;
+
+
+
+&lt;p&gt;Multiple things are going on here. First we define the function
+interactively because we have some nasty type-level dependencies and
+this post is not about dependent matching in Coq. Second we implemented
+&lt;tt&gt;flippedmap&lt;/tt&gt; rather than &lt;tt&gt;map&lt;/tt&gt; because taking the function
+first would create a unification problem &lt;tt&gt;curr ?x ~ [some function type]&lt;/tt&gt;
+which is obviously harder to resolve than &lt;tt&gt;list (dom ?x) ~ list ([some type])&lt;/tt&gt;.&lt;/p&gt;
+
+
+
+&lt;p&gt;We can introduce a notation in order to recover the usual arguments
+order. We then close our &lt;tt&gt;Currying&lt;/tt&gt; module and bring the notation
+into scope.&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;  Module theory.
+  Notation &quot;f &lt;$&gt; xs&quot; := (flippedmap xs f) (at level 70).
+  End theory.
+End Currying.
+
+Import Currying.theory.&lt;/p&gt;
+
+
+
+&lt;h3&gt;The Canonical Structures associated to &lt;tt&gt;Currying.type&lt;/tt&gt;&lt;/h3&gt;
+
+
+
+&lt;p&gt;Now that our interface has been defined, it is time to populate it
+with canonical instances. The first one simply states that given two
+domains we know how to curry, we can explain how to curry their product.
+The nesting &lt;tt&gt;fun cod =&gt; Currying.curr c1 (Currying.curr c2 cod)&lt;/tt&gt;
+is chosen so that arguments are kept in the right order.&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;Definition pair_curry (c1 c2 : Currying.type) :
+           forall cod, Currying.curr c1 (Currying.curr c2 cod) -&gt;
+                       (Currying.dom c1 * Currying.dom c2) -&gt; cod.
+  intros cod f (a, b).
+  apply c2 ; [| exact b].
+  apply c1 ; [| exact a].
+  exact f.
+Defined.
+
+Canonical Structure CurryingPair (c1 : Currying.type) (c2 : Currying.type) : Currying.type :=
+  Currying.Pack (Currying.dom c1 * Currying.dom c2)
+                (fun cod =&gt; Currying.curr c1 (Currying.curr c2 cod))
+                (Currying.Class (pair_curry c1 c2)).
+&lt;/p&gt;
+
+
+
+&lt;p&gt;That&#39;s all well and good except that we don&#39;t know yet how to deal
+with base types. Should we add an instance for each one of them? And
+what about type variables? It turns out that we can rely on the fact
+that these hints are tried in the order they are declared in and introduce
+a defaulting instance which does not do anything as witnessed by its
+&lt;tt&gt;Fun&lt;/tt&gt; component which is simply the identity.&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;Canonical Structure failsafe (a : Type) : Currying.type :=
+  Currying.Pack a (fun cod =&gt; a -&gt; cod) (Currying.Class (fun _ f =&gt; f)).&lt;/p&gt;
+
+
+
+
+&lt;h3&gt;Concluding Examples&lt;/h3&gt;
+
+
+
+&lt;p&gt;Thanks to the canonical structures, we can effortlessly recover the
+functions &lt;tt&gt;List.map_pair&lt;/tt&gt;, &lt;tt&gt;List.map_triple&lt;/tt&gt; and
+&lt;tt&gt;List.map_quad&lt;/tt&gt; I mentioned earlier:&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;Definition map_pair {A B C} (f : A -&gt; B -&gt; C) (l : list (A * B)) : list C := f &lt;$&gt; l.
+Definition map_triple {A B C D} (f : A -&gt; B -&gt; C -&gt; D) (l : list (A * B * C)) : list D := f &lt;$&gt; l.
+Definition map_quad {A B C D E} (f : A -&gt; B -&gt; C -&gt; D -&gt; E) (l : list (A * B * C * D)) : list E := f &lt;$&gt; l.&lt;/p&gt;
+
+
+
+&lt;p&gt;But we can also deal with arbitrary nesting patterns:&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;Definition map_nestedpairs {A B C D E} (f : A -&gt; B -&gt; C -&gt; D -&gt; E) (l : list ((A * B) * (C * D))) : list E := f &lt;$&gt; l.
+&lt;/p&gt;
+
+</description><guid isPermaLink="true">http://blog.gallais.org/canonical-structures-currying.html</guid><pubDate>Tue, 28 Jul 2015 13:37:00 UTC</pubDate></item><item><title>Resource Aware Contexts and Proof Search for ILL</title><link>http://blog.gallais.org/linear-proof-search.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Resource Aware Contexts and Proof Search for ILL&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://github.com/gallais/proof-search-ILLWiL&quot;&gt;Github repository&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;http://gallais.github.io/proof-search-ILLWiL/&quot;&gt;Papers &amp; coloured Agda&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;
 
 
