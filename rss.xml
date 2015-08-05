@@ -168,7 +168,7 @@ syntax flippedMap&#39; xs f = f ⟨$⟩ xs&lt;/p&gt;
 
 
 &lt;p&gt;We can now have a look at a couple of small examples. It should be
-noted that our typechecking-time magic does break anything: these examples
+noted that our typechecking-time magic does not break anything: these examples
 still compute! Indeed normalising &lt;tt&gt;example₁&lt;/tt&gt; yields &lt;tt&gt;3 ∷ 5 ∷ []&lt;/tt&gt;
 whilst doing the same for &lt;tt&gt;example₂&lt;/tt&gt; gives us &lt;tt&gt;17 ∷ 30 ∷ []&lt;/tt&gt;.&lt;/p&gt;
 
