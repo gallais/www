@@ -139,6 +139,15 @@ Définitions des éléments d'article
   font-style: italic;
 }
 
+.footnote-number {
+  float:left;
+  width: 2em;
+}
+
+.footnote-body {
+  margin-left: 2em;
+}
+
 /*
    ******
 Définitions des classes de span
@@ -226,6 +235,10 @@ Définitions des classes utilisées dans un post
   white-space: pre;
   background-color: #F8F8F8;
   border: 1px solid #666;
+}
+
+.highlight {
+  background-color: #C4C4C4;
 }
 
 .bad {
