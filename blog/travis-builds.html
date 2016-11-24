@@ -88,19 +88,19 @@ written in haskell and I figured I could extend it to meet my needs rather
 easily. As it turned out, getting travis to build and deploy the pages
 was probably the least painful step in the whole process; in comparison
 figuring out how to parse <a href="https://github.com/gallais/gallais.github.io/tree/source/src/Text/BBCode">
-the flavour of <tt>BBCode</tt></a> I use for these posts was hell
+the flavour of <span class="inline-code">BBCode</span></a> I use for these posts was hell
 <a id="reftop1" href="#refbot1">[1]</a>.</p>
 
 
 
 <p>The <a href="https://github.com/gallais/gallais.github.io/blob/master/.travis.yml">.travis.yml
 file</a> is sligtly more complicated this time given that I need to
-push the generated html pages to the <tt>master</tt> branch of the
+push the generated html pages to the <span class="inline-code">master</span> branch of the
 repository. To do so, one needs to generate personal access tokens
 <a href="https://github.com/settings/applications">on github</a> and then
 <a href="http://docs.travis-ci.com/user/encryption-keys">encrypt them using
-<tt>travis</tt></a>. If you look closely at the file, that's the
-<tt>${GH_TOKEN}</tt> I use when pushing.</p>
+<span class="inline-code">travis</span></a>. If you look closely at the file, that's the
+<span class="inline-code">${GH_TOKEN}</span> I use when pushing.</p>
 
 
 
@@ -175,7 +175,7 @@ for the standard library which tends to rely on "newly" (as in "in the
 last few months") introduced features. The obvious solution was to,
 somehow, get travis to generate a static binary when compiling and
 testing Agda and upload it on Dropbox. This is the purpose of my
-<a href="https://github.com/gallais/agda/tree/build-binary"><tt>build-binary</tt></a>
+<a href="https://github.com/gallais/agda/tree/build-binary"><span class="inline-code">build-binary</span></a>
 branch.</p>
 
 
@@ -227,10 +227,10 @@ that. If you have suggestions with respect to alternative hosting
 solutions making it easier for other people's scripts to pull the
 tarballs, <a href="../contact.html"><b>please contact me</b></a>!</p>
 
-<h3>Footnotes</h3><div class="footnotes"><p class="footnote"><div class="footnote-number"><a id="refbot1" href="#reftop1">[1]</a></div><div class="footnote-body">You should not conclude anything about <tt>parsec</tt> from
+<h3>Footnotes</h3><div class="footnotes"><p class="footnote"><div class="footnote-number"><a id="refbot1" href="#reftop1">[1]</a></div><div class="footnote-body">You should not conclude anything about <span class="inline-code">parsec</span> from
 that: I had no prior experience in parsing so I had a lot to learn
 and spent quite some time trying various libraries and parser generators
-before finally settling for <tt>parsec</tt>. Which does the job as you
+before finally settling for <span class="inline-code">parsec</span>. Which does the job as you
 can see.</div></p><p class="footnote"><div class="footnote-number"><a id="refbot2" href="#reftop2">[2]</a></div><div class="footnote-body">A working travis build would be the best demonstration that
 what you are suggesting is indeed the solution!</div></p></div>
 

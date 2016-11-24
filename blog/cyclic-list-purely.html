@@ -55,10 +55,10 @@ removing some of them from the cycle.</p>
 
 
 <p>Cyclic lists are represented using a mixed-variant datatype. On
-top of the expected <tt>CNil</tt> and <tt>Cons</tt> shared with usual
-lists, a <tt>CRec</tt> constructor is provided. It declares a pointer
+top of the expected <span class="inline-code">CNil</span> and <span class="inline-code">Cons</span> shared with usual
+lists, a <span class="inline-code">CRec</span> constructor is provided. It declares a pointer
 which may be used later on to represent that very node. It should be
-noted that <tt>CRec</tt> is <tt>Cons</tt>-like in order to guarantee
+noted that <span class="inline-code">CRec</span> is <span class="inline-code">Cons</span>-like in order to guarantee
 that all cycles are productive.</p>
 
 
@@ -73,7 +73,7 @@ that all cycles are productive.</p>
 to handle the pointer declaration in a sort of Higher Order
 Abstract Syntax fashion. It makes giving a semantics for it in terms
 of streams quite easy: one just needs to feed the function stored in
-<tt>CRec</tt> with the list itself.</p>
+<span class="inline-code">CRec</span> with the list itself.</p>
 
 
 
@@ -92,7 +92,7 @@ toStream xs@(CRec x r) = x : toStream (r xs)</p>
 out in Ghani et al. to justify their favouring of a more intensional
 approach to cycle representation. Most of them relate to the fact
 that it does not put enough restrictions on the ways one may use
-the variable provided by the <tt>CRec</tt> constructor. As a
+the variable provided by the <span class="inline-code">CRec</span> constructor. As a
 consequence, the encoding lacks canonicity.</p>
 
 
@@ -114,8 +114,8 @@ a pointer it will never use:</p>
 
 
 <p>Or introduce multiple pointers only one of which is meant to be
-declared whilst the other ones are <tt>CRec</tt> cells misused as
-<tt>Cons</tt> ones. This leads to the possibility of different
+declared whilst the other ones are <span class="inline-code">CRec</span> cells misused as
+<span class="inline-code">Cons</span> ones. This leads to the possibility of different
 representations of the same object:</p>
 
 
@@ -144,9 +144,9 @@ cycle</h3>
 imperfections, it is hard to define basic functions without
 unwinding the cycle. It is for instance impossible to map a
 function across a list without unfoding it. Indeed, using a
-<tt>CRec</tt> constructor in the last case would provide us
-with a <tt>CList b</tt> element but <tt>r</tt> expects a
-<tt>CList a</tt> one.</p>
+<span class="inline-code">CRec</span> constructor in the last case would provide us
+with a <span class="inline-code">CList b</span> element but <span class="inline-code">r</span> expects a
+<span class="inline-code">CList a</span> one.</p>
 
 
 
@@ -173,7 +173,7 @@ the very interesting <a href="https://tel.github.io/2014/07/15/mutable_algorithm
 explaining how the implementation used rank 2 polymorphism to avoid
 references escaping their environment. It was only natural to recycle
 that knowledge in our case to avoid all the API abuses evoked in the
-previous section. The new <tt>CList</tt> type constructor takes two
+previous section. The new <span class="inline-code">CList</span> type constructor takes two
 arguments; the first one is the type of the elements it contains
 whilst the second one is a phantom type used to enforce that the
 constructor are only ever used in the way they were meant to.</p>
@@ -187,12 +187,12 @@ constructor are only ever used in the way they were meant to.</p>
 
 
 
-<p><tt>CRec</tt>'s argument has to be polymorphic in the phantom
-type which means that it may not use <tt>CRec</tt> or <tt>CNil</tt>
-both of which fix the phantom type to <tt>Closed</tt>. In effect,
-it has to be a finite number of <tt>Cons</tt> followed by the
+<p><span class="inline-code">CRec</span>'s argument has to be polymorphic in the phantom
+type which means that it may not use <span class="inline-code">CRec</span> or <span class="inline-code">CNil</span>
+both of which fix the phantom type to <span class="inline-code">Closed</span>. In effect,
+it has to be a finite number of <span class="inline-code">Cons</span> followed by the
 variable provided. In other words, an element of type
-<tt>CList a Closed</tt> describes precisely a potentially cyclic
+<span class="inline-code">CList a Closed</span> describes precisely a potentially cyclic
 list <a id="reftop1" href="#refbot1">[1]</a>. Hence the following type alias:</p>
 
 
@@ -207,7 +207,7 @@ system which detects that we are trying to conflate types which are
 incompatible when we declare a pointer but forget to use it, when we
 declare multiple ones, etc. That is already a nice change but we
 are still facing a major challenge: writing functions such as
-<tt>map</tt> without unfolding the cycle. This is what Ghani et al.
+<span class="inline-code">map</span> without unfolding the cycle. This is what Ghani et al.
 write on that topic:</p>
 
 
@@ -224,23 +224,23 @@ functions well".</p>
 <p>This was absolutely true in the situation they were facing. But
 by exploiting the type system, we have managed to root out an
 awful lot of unwanted constructs. To the point that we now know
-for sure that there is <i>at most one</i> <tt>CRec</tt> constructor
-in a <tt>List a</tt>. This implies in particular that we can detect
-where the pointer declared by a <tt>CRec</tt> is used. Indeed, if
-<tt>xs</tt> is equal to <tt>CRec x f</tt> then we know for sure that
-<tt>f xs</tt> will contain a <tt>CRec</tt> and that it will be the
-head constructor of <tt>xs</tt> showing up where the pointer was
+for sure that there is <i>at most one</i> <span class="inline-code">CRec</span> constructor
+in a <span class="inline-code">List a</span>. This implies in particular that we can detect
+where the pointer declared by a <span class="inline-code">CRec</span> is used. Indeed, if
+<span class="inline-code">xs</span> is equal to <span class="inline-code">CRec x f</span> then we know for sure that
+<span class="inline-code">f xs</span> will contain a <span class="inline-code">CRec</span> and that it will be the
+head constructor of <span class="inline-code">xs</span> showing up where the pointer was
 used.</p>
 
 
 
-<p>This means that we can actually build a <tt>cfold</tt> function
+<p>This means that we can actually build a <span class="inline-code">cfold</span> function
 which will not unwind the cycle unless we want it to. Let's start
 by writing down the most general type for it. The two first arguments
-corresponds to the usual <tt>Cons</tt> and <tt>CNil</tt> cases with
+corresponds to the usual <span class="inline-code">Cons</span> and <span class="inline-code">CNil</span> cases with
 the right phantom types sprinkled where necessary. The third one
 is the one dealing with cycles and it mimics really closely the type
-of <tt>CRec</tt>. The whole thing is implemented in terms of an
+of <span class="inline-code">CRec</span>. The whole thing is implemented in terms of an
 auxiliary function.</p>
 
 
@@ -256,9 +256,9 @@ cfold c n r = goCRec</p>
 
 <p>This auxiliary function unfolds the list argument applying the
 appropriate combinator to the constructor's arguments and the
-the induction hypothesis. As its name <tt>goCRec</tt> suggests, it
-traverses the <tt>CRec</tt> constructor before handing over the rest
-of the work to <tt>stopCRec</tt>.</p>
+the induction hypothesis. As its name <span class="inline-code">goCRec</span> suggests, it
+traverses the <span class="inline-code">CRec</span> constructor before handing over the rest
+of the work to <span class="inline-code">stopCRec</span>.</p>
 
 
 
@@ -269,10 +269,10 @@ goCRec xs@(CRec x p) = r x $ stopCRec (p xs)</p>
 
 
 
-<p><tt>stopCRec</tt> is similarly structurally working its way
+<p><span class="inline-code">stopCRec</span> is similarly structurally working its way
 through the list except that it posesses an induction hypothesis
-<tt>ih</tt> obtained earlier on by <tt>goCRec</tt>. When faced with
-a <tt>CRec</tt>, we know for sure that we have just followed the
+<span class="inline-code">ih</span> obtained earlier on by <span class="inline-code">goCRec</span>. When faced with
+a <span class="inline-code">CRec</span>, we know for sure that we have just followed the
 pointer back to where it was declared. As a consequence, we return
 the induction hypothesis rather than unfolding the cycle yet
 another time.</p>
@@ -286,7 +286,7 @@ stopCRec (CRec _ _)  ih = ih</p>
 
 
 <p>Now that we have this induction principle, it is really easy to
-define a <tt>cmap</tt> which outputs a list with a structure
+define a <span class="inline-code">cmap</span> which outputs a list with a structure
 identical to the one we started with.</p>
 
 
@@ -296,9 +296,9 @@ cmap f = cfold (Cons . f) CNil (CRec . f)</p>
 
 
 
-<p>And indeed, <tt>cmap (+1) $ CRec 1 (Cons 2)</tt> evaluates down to
-<tt>CRec 2 (Cons 3)</tt> rather than the detestable
-<tt>Cons 2 (Cons 3 (Cons 2 (...)))</tt> the naïve solution used to
+<p>And indeed, <span class="inline-code">cmap (+1) $ CRec 1 (Cons 2)</span> evaluates down to
+<span class="inline-code">CRec 2 (Cons 3)</span> rather than the detestable
+<span class="inline-code">Cons 2 (Cons 3 (Cons 2 (...)))</span> the naïve solution used to
 produce.</p>
 
 
@@ -315,8 +315,8 @@ type:</p>
 
 
 
-<p>An elegant use case of this <tt>cfoldRec</tt> is the definition
-of the <tt>Show</tt> instance for <tt>List a</tt> which allows us
+<p>An elegant use case of this <span class="inline-code">cfoldRec</span> is the definition
+of the <span class="inline-code">Show</span> instance for <span class="inline-code">List a</span> which allows us
 to display a finite string representing the cyclic structure in its
 entirety. When we encounter the pointer declaration, we output
 "rec X. " and keep showing the rest of the list but when the pointer
@@ -330,9 +330,9 @@ is used, we simply output "X" and stop.</p>
 
 
 
-<p>And, as we expected, <tt>show $ CRec 1 (Cons 2)</tt> now reduces
-to the finite string <tt>"rec X. 1 : 2 : X"</tt>. It is also possible
-to recover a <tt>fold</tt>-style function unwinding the cycle by
+<p>And, as we expected, <span class="inline-code">show $ CRec 1 (Cons 2)</span> now reduces
+to the finite string <span class="inline-code">"rec X. 1 : 2 : X"</span>. It is also possible
+to recover a <span class="inline-code">fold</span>-style function unwinding the cycle by
 tying the knot in the third argument: the induction hypothesis
 will just be the whole subcomputation itself!</p>
 
@@ -358,7 +358,7 @@ toStream = cfold' (:) []</p>
 
 <p>There are still plenty of functions to implement on this
 representation some of which may raise interesting questions:
-<tt>czip</tt> will surely involve computing a least common
+<span class="inline-code">czip</span> will surely involve computing a least common
 multiple. And it will enable us to define an <i>extensional</i>
 equality on these cyclic structures. Exciting perspectives.</p>
 
@@ -371,7 +371,7 @@ equality on these cyclic structures. Exciting perspectives.</p>
 <p>GADTs combined with higher rank polymorphism allowed us to bake
 in invariants which were sufficient for us to write more useful
 functions than the rather untyped approach led us to believe was
-possible. The type of <tt>cfold</tt> lets us decide at any time
+possible. The type of <span class="inline-code">cfold</span> lets us decide at any time
 whether we want to unwind the cycle or not.</p>
 
 

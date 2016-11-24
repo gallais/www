@@ -1,4 +1,235 @@
-<rss version="2.0"><channel><title>gallais&#39; blog</title><link>http://blog.gallais.org</link><description>gallais&#39; blog</description><item><title>Parametrised Modules: (ab)using lambda-lifting</title><link>http://blog.gallais.org/lambda-lifting.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Parametrised Modules: (ab)using lambda-lifting&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://gist.github.com/gallais/0b3a50e12542f455c010&quot;&gt;Self-contained gist&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;
+<rss version="2.0"><channel><title>gallais&#39; blog</title><link>http://blog.gallais.org</link><description>gallais&#39; blog</description><item><title>Three Tricks to make Termination Obvious</title><link>http://blog.gallais.org/termination-tricks.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Three Tricks to make Termination Obvious&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;http://homepages.inf.ed.ac.uk/wadler/topics/language-design.html#prettier&quot;&gt;Wadler&#39;s Prettier Printer&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/gallais/potpourri/tree/master/agda/prettier&quot;&gt;Prettier Printer in Agda&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;
+
+
+
+&lt;p id=chapo&gt;Two weeks ago I spent some time implementing Wadler&#39;s
+&quot;Prettier Printer&quot;. The implementation is fairly straightforward
+except for three functions that are not seen as terminating. Here
+are the three tricks that made them go through.&lt;/p&gt;
+
+
+
+&lt;p&gt;Wadler&#39;s paper introduces a &lt;span class=inline-code&gt;Doc&lt;/span&gt; datatype
+abstractly representing documents in terms of raw strings, indentation,
+newlines, concatenation but also alternatives of subdocuments. Semantically,
+alternatives are used to offer two different layouts of the same underlying
+content. Various functions manipulate these documents; they may introduce
+alternatives when it&#39;s too early to make a decision or get rid of them e.g.
+once the maximum width of the final document is known.&lt;/p&gt;
+
+
+
+&lt;h3&gt;Using Vec rather than List&lt;/h3&gt;
+
+
+
+&lt;p&gt;The first problem shows up with the &lt;span class=inline-code&gt;fill&lt;/span&gt;
+function which turns a list of documents into a document by trying to
+fill the lines as much as possible. If the list is less than one
+element long, the strategy to adopt is evident. In case it&#39;s longer,
+the algorithm calls &lt;span class=inline-code&gt;flatten&lt;/span&gt; to collapse
+documents onto one line and offers two alternatives: the one where
+they have been made to fit and another one where a newline has
+been inserted.&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;fill :: [Doc] -&gt; Doc
+...
+fill (x:y:zs) = (flatten x &lt;+&gt; fill (flatten y : zs))
+                :&lt;|&gt;
+                (x &amp;lt;/&amp;gt; fill (y : zs))
+&lt;/p&gt;
+
+
+
+&lt;p&gt;The issue here is that &lt;span class=inline-code&gt;flatten y : zs&lt;/span&gt; is
+not a subterm of &lt;span class=inline-code&gt;x:y:zs&lt;/span&gt; which makes the
+recursive call to &lt;span class=inline-code&gt;fill&lt;/span&gt; look illegal. The
+right notion of smaller here is not &quot;strict subterm&quot; but rather
+&quot;smaller length&quot;. This can be fixed by simply changing the type of
+the function to &lt;span class=inline-code&gt;∀ {n} → Vec Doc n → Doc&lt;/span&gt; thus
+making the termination obviously structural: if the length of
+&lt;span class=inline-code&gt;x:y:zs&lt;/span&gt; is &lt;span class=inline-code&gt;suc (suc n)&lt;/span&gt;
+then the length of &lt;span class=inline-code&gt;flatten y : zs&lt;/span&gt; is
+&lt;span class=inline-code&gt;suc n&lt;/span&gt;, a strict subterm!&lt;/p&gt;
+
+
+
+&lt;p&gt;The code is kept the same but the type has an extra invariant
+built in (which is threaded via implicit arguments) and that makes
+the termination checker happy. We can recover a top-level function
+with &lt;span class=inline-code&gt;fill&lt;/span&gt;&#39;s type by pre-composing our
+replacement for it with &lt;span class=inline-code&gt;Data.Vec.fromList&lt;/span&gt;.&lt;/p&gt;
+
+
+
+&lt;h3&gt;CPS-transform algorithms using queues to store future work&lt;/h3&gt;
+
+
+
+&lt;p&gt;In Wadler&#39;s paper, a function &lt;span class=inline-code&gt;best&lt;/span&gt; is in
+charge of picking the most tightly-packed display form of a document
+a certain width can handle. It calls an auxiliary function
+&lt;span class=inline-code&gt;be&lt;/span&gt; which takes as arguments the width, the
+number of characters already inserted on the current line and a LIFO
+of documents (together with their respective indentation levels) that
+still have to be displayed.&lt;/p&gt;
+
+
+
+&lt;p&gt;During a typical run of the function, sub-structures get pushed
+on the stack and later on recursive calls are performed on them.
+However when that happens, we have lost the connection with the
+super-structure justifying that the call is indeed on a smaller
+argument and thus valid. Here is part of the code demonstrating
+the issue:&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;be :: Int -&gt; Int -&gt; [(Int, Doc)] -&gt; Doc
+...
+be w k ((i,NIL):z)     = be w k z
+be w k ((i,x :&lt;&gt; y):z) = be w k ((i,x):(i,y):z)
+...
+&lt;/p&gt;
+
+
+
+&lt;p&gt;The trick here is to perform the recursive calls when the
+evidence justifying them is available but to only use their
+results later on. In other word: replace future arguments
+with the continuation associated to them. This forces us to
+slightly change the type of the function: rather than working
+with a stack of &lt;span class=inline-code&gt;(Int, Doc)&lt;/span&gt; and
+inspecting its head, we work with a focused
+&lt;span class=inline-code&gt;Int&lt;/span&gt; and &lt;span class=inline-code&gt;Doc&lt;/span&gt;
+and a continuation &lt;span class=inline-code&gt;Int -&gt; Doc&lt;/span&gt; which,
+provided a number of characters already inserted on the current
+line will yield the document corresponding to the rest of the
+computation. The two lines we saw earlier on have now become
+&lt;a id=&quot;reftop1&quot; href=&quot;#refbot1&quot;&gt;[1]&lt;/a&gt;:&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;be : ℕ → ℕ → ℕ → Doc → (ℕ → Doc) → Doc
+...
+be w k i NIL       ds = ds k
+be w k i (d :&lt;&gt; e) ds = be w k i d $ λ k → be w k i e ds
+...
+&lt;/p&gt;
+
+
+
+&lt;p&gt;For &lt;a href=&quot;https://github.com/gallais/potpourri/blob/master/agda/poc/CPS-Termination.agda&quot;&gt;
+a more self-contained example&lt;/a&gt;, I have implemented a binary
+tree traversal using the same trick to assemble a list of all its
+leaves. The resulting algorithm corresponds to using a difference
+list to collect all the leaves.&lt;/p&gt;
+
+
+
+&lt;h3&gt;Use sized-types to make higher-order functions usable&lt;/h3&gt;
+
+
+
+&lt;p&gt;Last but not least, one of the examples of Wadler&#39;s library
+in action is the definition of a pretty printer for a deep
+embedding of XML. The XML trees are represented by:&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;data XML = Elt String [Att] [XML]
+         | Txt String
+data Att = Att String String&lt;/p&gt;
+
+
+
+&lt;p&gt;The function &lt;span class=inline-code&gt;showXMLs&lt;/span&gt; is used to neatly
+display the tree. In one of its clauses, it perform recursive calls
+on the subtrees via a higher-order function &lt;span class=inline-code&gt;showFill&lt;/span&gt;
+which Agda has issues seeing as terminating:&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;showFill :: (a -&gt; [Doc]) -&gt; [a] -&gt; Doc
+showFill f [] = nil
+showFill f xs = bracket &quot;&quot; (fill (concat (map f xs))) &quot;&quot;
+
+showXMLs :: XML -&gt; [Doc]
+...
+showXMLs (Elt n a c)  = [text &quot;&lt;&quot; &lt;&gt; showTag n a &lt;&gt; text &quot;&gt;&quot; &lt;&gt;
+                        showFill showXMLs c &lt;&gt;
+                        text &quot;&lt;/&quot; &lt;&gt; text n &lt;&gt; text &quot;&gt;&quot;]
+...&lt;/p&gt;
+
+
+
+&lt;p&gt;A common trick in this type of situation is to mutually define
+&lt;span class=inline-code&gt;showXMLs&lt;/span&gt; and an inlined version of the
+partially applied function &lt;span class=inline-code&gt;showFill showXMLs&lt;/span&gt;.
+However this code duplication is rather annoying.
+It turns out that we can, just like in our first example, save the day
+by slightly changing the types of the structures and functions at hand.
+This time we&#39;ll add implicit &lt;span class=inline-code&gt;Size&lt;/span&gt; information
+&lt;a id=&quot;reftop2&quot; href=&quot;#refbot2&quot;&gt;[2]&lt;/a&gt; to the definition of
+&lt;span class=inline-code&gt;XML&lt;/span&gt; and &lt;span class=inline-code&gt;showXMLs&lt;/span&gt;.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;data XML : {i : Size} → Set where
+  Elt : ∀ {i} → String → List Attribute → List (XML {i}) → XML {↑ i}
+  Txt : ∀ {i} → String → XML {i}
+
+showXMLs : ∀ {i} → XML {i} → List Doc
+...
+&lt;/p&gt;
+
+
+
+&lt;p&gt;When we don&#39;t explicitly specify the &lt;span class=inline-code&gt;Size&lt;/span&gt;,
+it gets defaulted to infinity which means that by default the indexed
+type will behave like its non-indexed counterpart. However we can get
+the full benefit of sized types whenever we do mention the index.&lt;/p&gt;
+
+
+
+&lt;p&gt;By making explicit reference to the tree&#39;s size in the type of
+&lt;span class=inline-code&gt;showXMLs&lt;/span&gt;, we get the termination checker
+to accept its definition as valid. Indeed, when matching on the
+constructor &lt;span class=inline-code&gt;Elt&lt;/span&gt;, the implicit size argument
+is &lt;span class=inline-code&gt;↑ i&lt;/span&gt; for some &lt;span class=inline-code&gt;i&lt;/span&gt;
+(cf. &lt;span class=inline-code&gt;Elt&lt;/span&gt;&#39;s return type) and in the recursive
+occurence passed to &lt;span class=inline-code&gt;showFill&lt;/span&gt;, it has become
+&lt;span class=inline-code&gt;i&lt;/span&gt; which is strictly smaller.&lt;/p&gt;
+
+
+
+
+&lt;h3&gt;Conclusion&lt;/h3&gt;
+
+
+
+&lt;p&gt;What I assumed to be a simple matter of closely following
+Wadler&#39;s paper turned out to be a nice exercise in convincing
+the termination checker whilst staying true to the original
+algorithm. In each one of these three examples we have managed
+to avoid both the sledgehammer that is
+&lt;a href=&quot;http://gallium.inria.fr/blog/bove-reloaded/&quot;&gt;well-founded
+recursion&lt;/a&gt; and code duplication by using either type-level
+tricks or a &lt;a href=&quot;http://dl.acm.org/citation.cfm?id=178053&quot;&gt;CPS
+transformation&lt;/a&gt;.
+&lt;/p&gt;
+
+
+&lt;h3&gt;Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;Here we are actually using &lt;span class=inline-code&gt;ℕ&lt;/span&gt;
+rather than &lt;span class=inline-code&gt;Int&lt;/span&gt; because these values
+are always positive anyways so we might as well say so in the
+type!&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot2&quot; href=&quot;#reftop2&quot;&gt;[2]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;For more on sized and dependent types, cf. Andreas Abel&#39;s
+&lt;a href=&quot;http://www2.tcs.ifi.lmu.de/~abel/par10.pdf&quot;&gt;MiniAgda: Integrating
+Sized and Dependent Types&lt;/a&gt;&lt;/div&gt;&lt;/p&gt;&lt;/div&gt;</description><guid isPermaLink="true">http://blog.gallais.org/termination-tricks.html</guid><pubDate>Thu, 24 Nov 2016 13:37:00 UTC</pubDate></item><item><title>Parametrised Modules: (ab)using lambda-lifting</title><link>http://blog.gallais.org/lambda-lifting.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Parametrised Modules: (ab)using lambda-lifting&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://gist.github.com/gallais/0b3a50e12542f455c010&quot;&gt;Self-contained gist&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;
 
 
 &lt;p id=chapo&gt;Lately, I have been working quite a bit with
@@ -19,11 +250,11 @@ used to tidy up some definitions.&lt;/p&gt;
 arguments. These variables are then made available to the user across
 the whole body of the module in a manner reminiscent of Coq&#39;s
 &lt;a href=&quot;https://coq.inria.fr/distrib/8.4pl6/refman/Reference-Manual004.html#sec77&quot;&gt;Sections&lt;/a&gt;.
-The most bare-bones example I could come up with is an &lt;tt&gt;Identity&lt;/tt&gt;
-module parameterised by &lt;tt&gt;A&lt;/tt&gt;, a &lt;tt&gt;Set&lt;/tt&gt;, and defining the
-identity function for &lt;tt&gt;A&lt;/tt&gt;. This definition is accepted without an
+The most bare-bones example I could come up with is an &lt;span class=inline-code&gt;Identity&lt;/span&gt;
+module parameterised by &lt;span class=inline-code&gt;A&lt;/span&gt;, a &lt;span class=inline-code&gt;Set&lt;/span&gt;, and defining the
+identity function for &lt;span class=inline-code&gt;A&lt;/span&gt;. This definition is accepted without an
 out of scope error being raised because, inside the module, the context
-is extended with &lt;tt&gt;A : Set&lt;/tt&gt;.&lt;/p&gt;
+is extended with &lt;span class=inline-code&gt;A : Set&lt;/span&gt;.&lt;/p&gt;
 
 
 
@@ -35,11 +266,11 @@ is extended with &lt;tt&gt;A : Set&lt;/tt&gt;.&lt;/p&gt;
 
 
 
-&lt;p&gt;Once we leave the module, the type of &lt;tt&gt;identity&lt;/tt&gt; as it is
-written down does not make sense anymore because &lt;tt&gt;A&lt;/tt&gt;&#39;s scope
+&lt;p&gt;Once we leave the module, the type of &lt;span class=inline-code&gt;identity&lt;/span&gt; as it is
+written down does not make sense anymore because &lt;span class=inline-code&gt;A&lt;/span&gt;&#39;s scope
 was only extending as far as the module was. The process of taking
 such a definition and altering it so that it makes sense even outside
-of &lt;tt&gt;Identity&lt;/tt&gt; is called
+of &lt;span class=inline-code&gt;Identity&lt;/span&gt; is called
 &lt;a href=&quot;https://en.wikipedia.org/wiki/Lambda_lifting&quot;&gt;lambda-lifting&lt;/a&gt;.
 It consists in prepending the telescope of arguments the module was
 parameterised with
@@ -47,8 +278,8 @@ parameterised with
 &lt;a id=&quot;reftop1&quot; href=&quot;#refbot1&quot;&gt;[1]&lt;/a&gt;
 
 to the type and body of the various defined symbols it contains. We can
-check that &lt;tt&gt;Identity.identity&lt;/tt&gt;&#39;s type now includes an extra argument:
-the type &lt;tt&gt;A&lt;/tt&gt;. Outside the &lt;tt&gt;Identity&lt;/tt&gt; module, it is effectively
+check that &lt;span class=inline-code&gt;Identity.identity&lt;/span&gt;&#39;s type now includes an extra argument:
+the type &lt;span class=inline-code&gt;A&lt;/span&gt;. Outside the &lt;span class=inline-code&gt;Identity&lt;/span&gt; module, it is effectively
 the polymorphic identity
 
 &lt;a id=&quot;reftop2&quot; href=&quot;#refbot2&quot;&gt;[2]&lt;/a&gt;
@@ -72,21 +303,21 @@ check = indeed
 when you need to make the content of a record, passed as an argument,
 available to the type and body of a defined symbol. To keep things simple,
 I decided to use one of the most basic constructs in the standard library&#39;s
-&lt;tt&gt;Algebra&lt;/tt&gt;: a &lt;tt&gt;RawMonoid&lt;/tt&gt;. If you have one such beast, then
+&lt;span class=inline-code&gt;Algebra&lt;/span&gt;: a &lt;span class=inline-code&gt;RawMonoid&lt;/span&gt;. If you have one such beast, then
 you can aggregate values by using the monoid&#39;s binary operation and
 &lt;a href=&quot;https://www.youtube.com/watch?v=We90tGh1z3g#t=11m29s&quot;&gt;people do
 that in &lt;i&gt;real&lt;/i&gt; software&lt;/a&gt;.&lt;/p&gt;
 
 
 
-&lt;p&gt;This module is called &lt;tt&gt;Reduce&lt;/tt&gt;, it is parameterised by a &lt;tt&gt;RawMonoid&lt;/tt&gt;
+&lt;p&gt;This module is called &lt;span class=inline-code&gt;Reduce&lt;/span&gt;, it is parameterised by a &lt;span class=inline-code&gt;RawMonoid&lt;/span&gt;
 
 &lt;a id=&quot;reftop3&quot; href=&quot;#refbot3&quot;&gt;[3]&lt;/a&gt;
 
-and it implements &lt;tt&gt;aggregate&lt;/tt&gt;, a function which collapses a list
+and it implements &lt;span class=inline-code&gt;aggregate&lt;/span&gt;, a function which collapses a list
 of values down to a single one. Here it is crucial for us to be able
-to bring the fields of the &lt;tt&gt;RawMonoid mon&lt;/tt&gt; in scope for the
-whole definition: &lt;tt&gt;Carrier&lt;/tt&gt;, &lt;tt&gt;_∙_&lt;/tt&gt; and &lt;tt&gt;ε&lt;/tt&gt; are
+to bring the fields of the &lt;span class=inline-code&gt;RawMonoid mon&lt;/span&gt; in scope for the
+whole definition: &lt;span class=inline-code&gt;Carrier&lt;/span&gt;, &lt;span class=inline-code&gt;_∙_&lt;/span&gt; and &lt;span class=inline-code&gt;ε&lt;/span&gt; are
 all packed up in that record.&lt;/p&gt;
 
 
@@ -119,12 +350,12 @@ aggregate′′ mon = foldr (RawMonoid._∙_ mon) (RawMonoid.ε mon)
 
 
 
-&lt;p&gt;We can now use &lt;tt&gt;aggregate&lt;/tt&gt; with an extra argument (the
-&lt;tt&gt;RawMonoid&lt;/tt&gt; in question). Assuming we have &lt;tt&gt;ℕ+&lt;/tt&gt; and
-&lt;tt&gt;ℕ*&lt;/tt&gt; (respectively the additive and multiplicative monoids over
-the natural numbers) and a function &lt;tt&gt;[_⋯_]&lt;/tt&gt; generating a range
+&lt;p&gt;We can now use &lt;span class=inline-code&gt;aggregate&lt;/span&gt; with an extra argument (the
+&lt;span class=inline-code&gt;RawMonoid&lt;/span&gt; in question). Assuming we have &lt;span class=inline-code&gt;ℕ+&lt;/span&gt; and
+&lt;span class=inline-code&gt;ℕ*&lt;/span&gt; (respectively the additive and multiplicative monoids over
+the natural numbers) and a function &lt;span class=inline-code&gt;[_⋯_]&lt;/span&gt; generating a range
 of natural numbers, we can write some test about computations involving
-&lt;tt&gt;aggregate&lt;/tt&gt;:&lt;/p&gt;
+&lt;span class=inline-code&gt;aggregate&lt;/span&gt;:&lt;/p&gt;
 
 
 
@@ -139,7 +370,7 @@ when defining what could be considered a semantics, is to anticipate
 the lambda-lifting and define an infix operator which uses a double
 turnstile (⊨) to separate the specific theory used from the
 (parametrically defined) computation it acts upon. Here this would mean
-adding the following line &lt;b&gt;inside&lt;/b&gt; the module &lt;tt&gt;Reduce&lt;/tt&gt;:&lt;/p&gt;
+adding the following line &lt;b&gt;inside&lt;/b&gt; the module &lt;span class=inline-code&gt;Reduce&lt;/span&gt;:&lt;/p&gt;
 
 
 
@@ -147,11 +378,11 @@ adding the following line &lt;b&gt;inside&lt;/b&gt; the module &lt;tt&gt;Reduce&
 
 
 
-&lt;p&gt;&lt;tt&gt;_⊨reduce_&lt;/tt&gt; is supposed to take two arguments but, inside
-&lt;tt&gt;Reduce&lt;/tt&gt;, &lt;tt&gt;aggregate&lt;/tt&gt; only takes one. This weird mismatch
-is solved when we leave the module and the &lt;tt&gt;RawMonoid&lt;/tt&gt; argument
-is lambda-lifted. We can now write &lt;tt&gt;A ⊨reduce xs&lt;/tt&gt; to mean that we use
-the monoid &lt;tt&gt;A&lt;/tt&gt; to give a meaning to the phrase &quot;reduce xs&quot;.
+&lt;p&gt;&lt;span class=inline-code&gt;_⊨reduce_&lt;/span&gt; is supposed to take two arguments but, inside
+&lt;span class=inline-code&gt;Reduce&lt;/span&gt;, &lt;span class=inline-code&gt;aggregate&lt;/span&gt; only takes one. This weird mismatch
+is solved when we leave the module and the &lt;span class=inline-code&gt;RawMonoid&lt;/span&gt; argument
+is lambda-lifted. We can now write &lt;span class=inline-code&gt;A ⊨reduce xs&lt;/span&gt; to mean that we use
+the monoid &lt;span class=inline-code&gt;A&lt;/span&gt; to give a meaning to the phrase &quot;reduce xs&quot;.
 The same tests as before hold but I find the type more readable:&lt;/p&gt;
 
 
@@ -170,21 +401,21 @@ defined symbols together will all the ones they themselves depend on
 dependency-closed sub-context containing the variables free in the
 defined symbol&#39;s type and body.
 &lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot2&quot; href=&quot;#reftop2&quot;&gt;[2]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;
-&lt;p&gt;Here we write &lt;tt&gt;a ∈ A&lt;/tt&gt; to mean that &lt;tt&gt;a&lt;/tt&gt; has type &lt;tt&gt;A&lt;/tt&gt;.
+&lt;p&gt;Here we write &lt;span class=inline-code&gt;a ∈ A&lt;/span&gt; to mean that &lt;span class=inline-code&gt;a&lt;/span&gt; has type &lt;span class=inline-code&gt;A&lt;/span&gt;.
 This notion can be defined using a simple indexed family which looks a
 lot like propositional equality: because of the way the only constructor
-&lt;tt&gt;indeed&lt;/tt&gt; is defined, if &lt;tt&gt;a ∈ A&lt;/tt&gt; is inhabited then &lt;tt&gt;A&lt;/tt&gt;
-can only ever be &lt;tt&gt;a&lt;/tt&gt;&#39;s type:&lt;/p&gt;
+&lt;span class=inline-code&gt;indeed&lt;/span&gt; is defined, if &lt;span class=inline-code&gt;a ∈ A&lt;/span&gt; is inhabited then &lt;span class=inline-code&gt;A&lt;/span&gt;
+can only ever be &lt;span class=inline-code&gt;a&lt;/span&gt;&#39;s type:&lt;/p&gt;
 
 &lt;p class=code&gt;data _∈_ {ℓ : Level} {A : Set ℓ} (a : A) : (B : Set ℓ) → Set where
   indeed : a ∈ A
 &lt;/p&gt;
 &lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot3&quot; href=&quot;#reftop3&quot;&gt;[3]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;
-In the standard library, a &lt;tt&gt;Monoid&lt;/tt&gt; is a &lt;tt&gt;RawMonoid&lt;/tt&gt;
-plus some laws. Here we do not care about the proofs that &lt;tt&gt;_∙_&lt;/tt&gt;
-is associative and &lt;tt&gt;ε&lt;/tt&gt; a neutral element for it. It goes without
+In the standard library, a &lt;span class=inline-code&gt;Monoid&lt;/span&gt; is a &lt;span class=inline-code&gt;RawMonoid&lt;/span&gt;
+plus some laws. Here we do not care about the proofs that &lt;span class=inline-code&gt;_∙_&lt;/span&gt;
+is associative and &lt;span class=inline-code&gt;ε&lt;/span&gt; a neutral element for it. It goes without
 saying that in a general-purpose library, it would be more interesting
-to work on a &lt;tt&gt;Monoid&lt;/tt&gt; and prove &lt;tt&gt;aggregate&lt;/tt&gt;&#39;s properties
+to work on a &lt;span class=inline-code&gt;Monoid&lt;/span&gt; and prove &lt;span class=inline-code&gt;aggregate&lt;/span&gt;&#39;s properties
 (e.g. that it is a monoid homomorphism).
 &lt;/div&gt;&lt;/p&gt;&lt;/div&gt;</description><guid isPermaLink="true">http://blog.gallais.org/lambda-lifting.html</guid><pubDate>Wed,  6 Jan 2016 13:37:00 UTC</pubDate></item><item><title>Canonical Structures in Agda using REWRITE</title><link>http://blog.gallais.org/canonical-structures-REWRITE.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Canonical Structures in Agda using REWRITE&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://github.com/agda/agda/blob/0716021c904186ca806a34fe110ae0fca4a3dd70/src/full/Agda/TypeChecking/Rewriting.hs#L5L42&quot;&gt;REWRITE&#39;s documentation&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;https://gist.github.com/gallais/438793c5ed7988826b9b&quot;&gt;Agda Gist&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;
@@ -194,30 +425,30 @@ to work on a &lt;tt&gt;Monoid&lt;/tt&gt; and prove &lt;tt&gt;aggregate&lt;/tt&gt
 &lt;p id=chapo&gt;Last week I talked about &lt;a href=&quot;canonical-structures-currying&quot;&gt;currying
 using Coq&#39;s Canonical Structures&lt;/a&gt;. This got me thinking about how to
 get something similar working in Agda. It turns out that the recently
-introduced &lt;tt&gt;REWRITE&lt;/tt&gt; pragma is just what is needed to replicate
+introduced &lt;span class=inline-code&gt;REWRITE&lt;/span&gt; pragma is just what is needed to replicate
 this use case.&lt;/p&gt;
 
 
 
 &lt;p&gt;Let us start with a quick reminder of the problem at hand: the goal is
-to be able to write a &lt;tt&gt;map&lt;/tt&gt; function working on lists and automatically
+to be able to write a &lt;span class=inline-code&gt;map&lt;/span&gt; function working on lists and automatically
 currying its argument as much as possible. Why you ask? Well because we
-really don&#39;t want to have to define &lt;tt&gt;map_tuple&lt;/tt&gt;, &lt;tt&gt;map_triple&lt;/tt&gt;
+really don&#39;t want to have to define &lt;span class=inline-code&gt;map_tuple&lt;/span&gt;, &lt;span class=inline-code&gt;map_triple&lt;/span&gt;
 and so on with all the possible nestings imaginable.&lt;/p&gt;
 
 
 
-&lt;h3&gt;The definition of &lt;tt&gt;Curry&lt;/tt&gt; and various instances&lt;/h3&gt;
+&lt;h3&gt;The definition of &lt;span class=inline-code&gt;Curry&lt;/span&gt; and various instances&lt;/h3&gt;
 
 
 
-&lt;p&gt;The first thing to do is to introduce a record &lt;tt&gt;Curry&lt;/tt&gt; describing
+&lt;p&gt;The first thing to do is to introduce a record &lt;span class=inline-code&gt;Curry&lt;/span&gt; describing
 the sort of domains we may curry. You may recognise the structure we used
 in &lt;a href=&quot;canonical-structures-currying&quot;&gt;the previous blog post&lt;/a&gt;: this
-record packs a domain (&lt;tt&gt;dom&lt;/tt&gt;), a type constructor (&lt;tt&gt;cur&lt;/tt&gt;)
-and a proof (&lt;tt&gt;prf&lt;/tt&gt;) that for any codomain &lt;tt&gt;cod&lt;/tt&gt;, one may turn
-an element of type &lt;tt&gt;cur cod&lt;/tt&gt; into a function from &lt;tt&gt;dom&lt;/tt&gt; to
-&lt;tt&gt;cod&lt;/tt&gt;.&lt;/p&gt;
+record packs a domain (&lt;span class=inline-code&gt;dom&lt;/span&gt;), a type constructor (&lt;span class=inline-code&gt;cur&lt;/span&gt;)
+and a proof (&lt;span class=inline-code&gt;prf&lt;/span&gt;) that for any codomain &lt;span class=inline-code&gt;cod&lt;/span&gt;, one may turn
+an element of type &lt;span class=inline-code&gt;cur cod&lt;/span&gt; into a function from &lt;span class=inline-code&gt;dom&lt;/span&gt; to
+&lt;span class=inline-code&gt;cod&lt;/span&gt;.&lt;/p&gt;
 
 
 
@@ -229,11 +460,11 @@ an element of type &lt;tt&gt;cur cod&lt;/tt&gt; into a function from &lt;tt&gt;d
 
 
 
-&lt;p&gt;The next step is to define instances of &lt;tt&gt;Curry&lt;/tt&gt;. The most
+&lt;p&gt;The next step is to define instances of &lt;span class=inline-code&gt;Curry&lt;/span&gt;. The most
 obvious instance is probably the one doing nothing: for any domain
-&lt;tt&gt;A&lt;/tt&gt;, we can define &lt;tt&gt;cur&lt;/tt&gt; to be the function which
-associates &lt;tt&gt;A → cod&lt;/tt&gt; to each codomain &lt;tt&gt;cod&lt;/tt&gt;. The
-proof that one can turn &lt;tt&gt;A → cod&lt;/tt&gt; into &lt;tt&gt;cur cod&lt;/tt&gt;
+&lt;span class=inline-code&gt;A&lt;/span&gt;, we can define &lt;span class=inline-code&gt;cur&lt;/span&gt; to be the function which
+associates &lt;span class=inline-code&gt;A → cod&lt;/span&gt; to each codomain &lt;span class=inline-code&gt;cod&lt;/span&gt;. The
+proof that one can turn &lt;span class=inline-code&gt;A → cod&lt;/span&gt; into &lt;span class=inline-code&gt;cur cod&lt;/span&gt;
 is then trivial.&lt;/p&gt;
 
 
@@ -248,9 +479,9 @@ curryDefault A =
 
 
 
-&lt;p&gt;We then explain how to combine two instances of &lt;tt&gt;Curry&lt;/tt&gt; by
+&lt;p&gt;We then explain how to combine two instances of &lt;span class=inline-code&gt;Curry&lt;/span&gt; by
 taking, as domain, the product of their respective domains. The
-definitions of &lt;tt&gt;cur&lt;/tt&gt; and &lt;tt&gt;prf&lt;/tt&gt; become a bit more involved
+definitions of &lt;span class=inline-code&gt;cur&lt;/span&gt; and &lt;span class=inline-code&gt;prf&lt;/span&gt; become a bit more involved
 but should be understandable.&lt;/p&gt;
 
 
@@ -267,11 +498,11 @@ curryPair A B =
 
 
 
-&lt;h3&gt;Using &lt;tt&gt;REWRITE&lt;/tt&gt; to guide the typechecker&lt;/h3&gt;
+&lt;h3&gt;Using &lt;span class=inline-code&gt;REWRITE&lt;/span&gt; to guide the typechecker&lt;/h3&gt;
 
 
 
-&lt;p&gt;A &lt;a href=&quot;https://github.com/agda/agda/blob/0716021c904186ca806a34fe110ae0fca4a3dd70/src/full/Agda/TypeChecking/Rewriting.hs#L5L42&quot;&gt;&lt;tt&gt;REWRITE&lt;/tt&gt; pragma&lt;/a&gt;
+&lt;p&gt;A &lt;a href=&quot;https://github.com/agda/agda/blob/0716021c904186ca806a34fe110ae0fca4a3dd70/src/full/Agda/TypeChecking/Rewriting.hs#L5L42&quot;&gt;&lt;span class=inline-code&gt;REWRITE&lt;/span&gt; pragma&lt;/a&gt;
 has recently been introduced to allow the user to define a binary relation
 characterizing equations the typechecker should internalise. The primary
 goal is, as far as I know, to allow homotopy type theorists to have a bit
@@ -283,10 +514,10 @@ whilst drafting this program.&lt;/p&gt;
 
 
 
-&lt;p&gt;The sole purpose of the &lt;tt&gt;Canonical&lt;/tt&gt; relation we introduce is
+&lt;p&gt;The sole purpose of the &lt;span class=inline-code&gt;Canonical&lt;/span&gt; relation we introduce is
 to guide the rewriting process. As such, we don&#39;t care about its
 implementation and can simply postulate it. We also introduce a
-&lt;tt&gt;Target&lt;/tt&gt; precisely identifying the candidates for rewriting
+&lt;span class=inline-code&gt;Target&lt;/span&gt; precisely identifying the candidates for rewriting
 in order to avoid to send Agda into an infinite loop by reapplying
 the default rule over and over again.&lt;/p&gt;
 
@@ -301,7 +532,7 @@ the default rule over and over again.&lt;/p&gt;
 
 &lt;p&gt;We can then define two rewrite rules based on our previous combinators.
 The order in which they are introduced matters and that is why we start
-with the one dealing with pairs so that we only ever use &lt;tt&gt;curryDefault&lt;/tt&gt;
+with the one dealing with pairs so that we only ever use &lt;span class=inline-code&gt;curryDefault&lt;/span&gt;
 when reaching a base type or a type variable.&lt;/p&gt;
 
 
@@ -313,9 +544,9 @@ when reaching a base type or a type variable.&lt;/p&gt;
 
 
 
-&lt;p&gt;Finally, we use the appropriate pragmas to declare &lt;tt&gt;Canonical&lt;/tt&gt;
+&lt;p&gt;Finally, we use the appropriate pragmas to declare &lt;span class=inline-code&gt;Canonical&lt;/span&gt;
 as the relation characterizing the equations which should be internalised
-and tell Agda to use &lt;tt&gt;CanonicalProd&lt;/tt&gt; and &lt;tt&gt;CanonicalDefault&lt;/tt&gt;
+and tell Agda to use &lt;span class=inline-code&gt;CanonicalProd&lt;/span&gt; and &lt;span class=inline-code&gt;CanonicalDefault&lt;/span&gt;
 as rewrite rules.&lt;/p&gt;
 
 
@@ -327,10 +558,10 @@ as rewrite rules.&lt;/p&gt;
 
 
 &lt;p&gt;It is now time to define our generic mapping function. Just like last
-time, it is preferable to defined a &lt;tt&gt;flippedMap&lt;/tt&gt; in order to fire
-the easy constraint &lt;tt&gt;List (Target A)&lt;/tt&gt; first. We define
-&lt;tt&gt;flippedMap&lt;/tt&gt; with a domain &lt;tt&gt;A&lt;/tt&gt; which we now to be &lt;tt&gt;Curry&lt;/tt&gt;
-and use its &lt;tt&gt;prf&lt;/tt&gt; field to transport the function passed as an
+time, it is preferable to defined a &lt;span class=inline-code&gt;flippedMap&lt;/span&gt; in order to fire
+the easy constraint &lt;span class=inline-code&gt;List (Target A)&lt;/span&gt; first. We define
+&lt;span class=inline-code&gt;flippedMap&lt;/span&gt; with a domain &lt;span class=inline-code&gt;A&lt;/span&gt; which we now to be &lt;span class=inline-code&gt;Curry&lt;/span&gt;
+and use its &lt;span class=inline-code&gt;prf&lt;/span&gt; field to transport the function passed as an
 argument.&lt;/p&gt;
 
 
@@ -340,11 +571,11 @@ flippedMap {A} xs f = map (prf A _ f) xs&lt;/p&gt;
 
 
 
-&lt;p&gt;We then introduce a slight variation on &lt;tt&gt;flippedMap&lt;/tt&gt; which
-turns its argument into a &lt;tt&gt;Target&lt;/tt&gt;. This is a great occasion
+&lt;p&gt;We then introduce a slight variation on &lt;span class=inline-code&gt;flippedMap&lt;/span&gt; which
+turns its argument into a &lt;span class=inline-code&gt;Target&lt;/span&gt;. This is a great occasion
 to add a bit of syntactic sugar putting the arguments back in their
 right order. We choose to stick to applicative style combinators and use
-&lt;tt&gt;_⟨$⟩_&lt;/tt&gt;.&lt;/p&gt;
+&lt;span class=inline-code&gt;_⟨$⟩_&lt;/span&gt;.&lt;/p&gt;
 
 
 
@@ -357,8 +588,8 @@ syntax flippedMap&#39; xs f = f ⟨$⟩ xs&lt;/p&gt;
 
 &lt;p&gt;We can now have a look at a couple of small examples. It should be
 noted that our typechecking-time magic does not break anything: these examples
-still compute! Indeed normalising &lt;tt&gt;example₁&lt;/tt&gt; yields &lt;tt&gt;3 ∷ 5 ∷ []&lt;/tt&gt;
-whilst doing the same for &lt;tt&gt;example₂&lt;/tt&gt; gives us &lt;tt&gt;17 ∷ 30 ∷ []&lt;/tt&gt;.&lt;/p&gt;
+still compute! Indeed normalising &lt;span class=inline-code&gt;example₁&lt;/span&gt; yields &lt;span class=inline-code&gt;3 ∷ 5 ∷ []&lt;/span&gt;
+whilst doing the same for &lt;span class=inline-code&gt;example₂&lt;/span&gt; gives us &lt;span class=inline-code&gt;17 ∷ 30 ∷ []&lt;/span&gt;.&lt;/p&gt;
 
 
 
@@ -385,8 +616,8 @@ them. Here&#39;s the result.&lt;/p&gt;
 
 &lt;p&gt;Whilst reading &lt;a href=&quot;http://coq-blog.clarus.me/simple-unit-testing-in-coq.html&quot;&gt;a
 completely unrelated blog post&lt;/a&gt; about unit testing in Coq, I stumbled
-upon a series of almost identical functions named &lt;tt&gt;List.map_pair&lt;/tt&gt;,
-&lt;tt&gt;List.map_triple&lt;/tt&gt; and &lt;tt&gt;List.map_quad&lt;/tt&gt;. I thought to myself
+upon a series of almost identical functions named &lt;span class=inline-code&gt;List.map_pair&lt;/span&gt;,
+&lt;span class=inline-code&gt;List.map_triple&lt;/span&gt; and &lt;span class=inline-code&gt;List.map_quad&lt;/span&gt;. I thought to myself
 that, surely, it should be possible in a language with type-level computations
 to do away with the sort of &lt;a href=&quot;http://hackage.haskell.org/package/base-4.8.1.0/docs/Data-List.html#v:zipWith3&quot;&gt;monstrosities&lt;/a&gt;
 one can sometime find in Haskell libraries.
@@ -403,8 +634,8 @@ of reifying the domain of the function we want to curry. Annoying.&lt;/p&gt;
 
 &lt;p&gt;That is when Canonical Structures come to the rescue: they are a way
 to give hints to the unification algorithm when it faces a problem of the
-shape &lt;tt&gt;project ?x ~ term&lt;/tt&gt; where &lt;tt&gt;project&lt;/tt&gt; is a projection
-out of a record, &lt;tt&gt;?x&lt;/tt&gt; is a unification variable and &lt;tt&gt;term&lt;/tt&gt;
+shape &lt;span class=inline-code&gt;project ?x ~ term&lt;/span&gt; where &lt;span class=inline-code&gt;project&lt;/span&gt; is a projection
+out of a record, &lt;span class=inline-code&gt;?x&lt;/span&gt; is a unification variable and &lt;span class=inline-code&gt;term&lt;/span&gt;
 is... a term. Because this unification step can lead to new ones, we
 effectively have a way to encode a prolog-like proof search. And we are
 going to use it to generate the right sort of currying.&lt;/p&gt;
@@ -418,10 +649,10 @@ going to use it to generate the right sort of currying.&lt;/p&gt;
 &lt;p&gt;This whole development is following quite closely the really good
 introduction &lt;a href=&quot;https://hal.inria.fr/hal-00816703&quot;&gt;Canonical Structures
 for the working Coq user&lt;/a&gt;. We start by defining a module which
-contains first and foremost a Record &lt;tt&gt;class&lt;/tt&gt; indexed by a domain
-&lt;tt&gt;Dom&lt;/tt&gt; and a type constructor &lt;tt&gt;Curr&lt;/tt&gt; such that &lt;tt&gt;Curr a&lt;/tt&gt;
-is a curried version of the function space &lt;tt&gt;Dom -&gt; a&lt;/tt&gt; as witnessed
-by the &lt;tt&gt;Fun&lt;/tt&gt; stored in the record.&lt;/p&gt;
+contains first and foremost a Record &lt;span class=inline-code&gt;class&lt;/span&gt; indexed by a domain
+&lt;span class=inline-code&gt;Dom&lt;/span&gt; and a type constructor &lt;span class=inline-code&gt;Curr&lt;/span&gt; such that &lt;span class=inline-code&gt;Curr a&lt;/span&gt;
+is a curried version of the function space &lt;span class=inline-code&gt;Dom -&gt; a&lt;/span&gt; as witnessed
+by the &lt;span class=inline-code&gt;Fun&lt;/span&gt; stored in the record.&lt;/p&gt;
 
 
 
@@ -432,8 +663,8 @@ by the &lt;tt&gt;Fun&lt;/tt&gt; stored in the record.&lt;/p&gt;
 
 
 
-&lt;p&gt;We then define a structure called &lt;tt&gt;type&lt;/tt&gt; packing together
-a &lt;tt&gt;Dom&lt;/tt&gt;, a &lt;tt&gt;Curr&lt;/tt&gt; and the &lt;tt&gt;class Dom Curr&lt;/tt&gt; evidence
+&lt;p&gt;We then define a structure called &lt;span class=inline-code&gt;type&lt;/span&gt; packing together
+a &lt;span class=inline-code&gt;Dom&lt;/span&gt;, a &lt;span class=inline-code&gt;Curr&lt;/span&gt; and the &lt;span class=inline-code&gt;class Dom Curr&lt;/span&gt; evidence
 that they are related.&lt;/p&gt;
 
 
@@ -446,12 +677,12 @@ that they are related.&lt;/p&gt;
 
 
 &lt;p&gt;Now, remember that canonical structures are used to give hints to the
-unification algorithm when facing &lt;tt&gt;project ?x ~ term&lt;/tt&gt; problems.
-Having this &lt;tt&gt;type&lt;/tt&gt; structure will allow us to generate
-&lt;tt&gt;dom ?x ~ something&lt;/tt&gt; unification problems which means that the
+unification algorithm when facing &lt;span class=inline-code&gt;project ?x ~ term&lt;/span&gt; problems.
+Having this &lt;span class=inline-code&gt;type&lt;/span&gt; structure will allow us to generate
+&lt;span class=inline-code&gt;dom ?x ~ something&lt;/span&gt; unification problems which means that the
 unification algorithm will be able to infer from the shape of the domain
 what its curried version is. In order to trigger these unification problems,
-we are defining a special version of &lt;tt&gt;map&lt;/tt&gt; on &lt;tt&gt;list&lt;/tt&gt;:&lt;/p&gt;
+we are defining a special version of &lt;span class=inline-code&gt;map&lt;/span&gt; on &lt;span class=inline-code&gt;list&lt;/span&gt;:&lt;/p&gt;
 
 
 
@@ -467,14 +698,14 @@ we are defining a special version of &lt;tt&gt;map&lt;/tt&gt; on &lt;tt&gt;list&
 &lt;p&gt;Multiple things are going on here. First we define the function
 interactively because we have some nasty type-level dependencies and
 this post is not about dependent matching in Coq. Second we implemented
-&lt;tt&gt;flippedmap&lt;/tt&gt; rather than &lt;tt&gt;map&lt;/tt&gt; because taking the function
-first would create a unification problem &lt;tt&gt;curr ?x ~ [some function type]&lt;/tt&gt;
-which is obviously harder to resolve than &lt;tt&gt;list (dom ?x) ~ list ([some type])&lt;/tt&gt;.&lt;/p&gt;
+&lt;span class=inline-code&gt;flippedmap&lt;/span&gt; rather than &lt;span class=inline-code&gt;map&lt;/span&gt; because taking the function
+first would create a unification problem &lt;span class=inline-code&gt;curr ?x ~ [some function type]&lt;/span&gt;
+which is obviously harder to resolve than &lt;span class=inline-code&gt;list (dom ?x) ~ list ([some type])&lt;/span&gt;.&lt;/p&gt;
 
 
 
 &lt;p&gt;We can introduce a notation in order to recover the usual arguments
-order. We then close our &lt;tt&gt;Currying&lt;/tt&gt; module and bring the notation
+order. We then close our &lt;span class=inline-code&gt;Currying&lt;/span&gt; module and bring the notation
 into scope.&lt;/p&gt;
 
 
@@ -488,14 +719,14 @@ Import Currying.theory.&lt;/p&gt;
 
 
 
-&lt;h3&gt;The Canonical Structures associated to &lt;tt&gt;Currying.type&lt;/tt&gt;&lt;/h3&gt;
+&lt;h3&gt;The Canonical Structures associated to &lt;span class=inline-code&gt;Currying.type&lt;/span&gt;&lt;/h3&gt;
 
 
 
 &lt;p&gt;Now that our interface has been defined, it is time to populate it
 with canonical instances. The first one simply states that given two
 domains we know how to curry, we can explain how to curry their product.
-The nesting &lt;tt&gt;fun cod =&gt; Currying.curr c1 (Currying.curr c2 cod)&lt;/tt&gt;
+The nesting &lt;span class=inline-code&gt;fun cod =&gt; Currying.curr c1 (Currying.curr c2 cod)&lt;/span&gt;
 is chosen so that arguments are kept in the right order.&lt;/p&gt;
 
 
@@ -522,7 +753,7 @@ with base types. Should we add an instance for each one of them? And
 what about type variables? It turns out that we can rely on the fact
 that these hints are tried in the order they are declared in and introduce
 a defaulting instance which does not do anything as witnessed by its
-&lt;tt&gt;Fun&lt;/tt&gt; component which is simply the identity.&lt;/p&gt;
+&lt;span class=inline-code&gt;Fun&lt;/span&gt; component which is simply the identity.&lt;/p&gt;
 
 
 
@@ -537,8 +768,8 @@ a defaulting instance which does not do anything as witnessed by its
 
 
 &lt;p&gt;Thanks to the canonical structures, we can effortlessly recover the
-functions &lt;tt&gt;List.map_pair&lt;/tt&gt;, &lt;tt&gt;List.map_triple&lt;/tt&gt; and
-&lt;tt&gt;List.map_quad&lt;/tt&gt; I mentioned earlier:&lt;/p&gt;
+functions &lt;span class=inline-code&gt;List.map_pair&lt;/span&gt;, &lt;span class=inline-code&gt;List.map_triple&lt;/span&gt; and
+&lt;span class=inline-code&gt;List.map_quad&lt;/span&gt; I mentioned earlier:&lt;/p&gt;
 
 
 
@@ -609,10 +840,10 @@ thus leading us to write the rule the following way:&lt;/p&gt;
 
 
 
-&lt;p&gt;Here, &lt;tt&gt;Γ ≡ Δ ⋈ E&lt;/tt&gt; means that &lt;tt&gt;Γ&lt;/tt&gt; is obtained by
-interleaving &lt;tt&gt;Δ&lt;/tt&gt; and &lt;tt&gt;E&lt;/tt&gt; which, if we read the rule
+&lt;p&gt;Here, &lt;span class=inline-code&gt;Γ ≡ Δ ⋈ E&lt;/span&gt; means that &lt;span class=inline-code&gt;Γ&lt;/span&gt; is obtained by
+interleaving &lt;span class=inline-code&gt;Δ&lt;/span&gt; and &lt;span class=inline-code&gt;E&lt;/span&gt; which, if we read the rule
 bottom-up, precisely correspond to the idea of finding the right
-partition when applying &lt;tt&gt;⊗ʳ&lt;/tt&gt;. But we really do not want to
+partition when applying &lt;span class=inline-code&gt;⊗ʳ&lt;/span&gt;. But we really do not want to
 have to generate &lt;i&gt;all&lt;/i&gt; partitions and test them one after the
 other. This leads us to our first maxim:&lt;/p&gt;
 
@@ -665,7 +896,7 @@ new sequent calculus generalising linear logic:&lt;/p&gt;
 
 
 &lt;p&gt;The case of atomic propositions is defined in terms of an auxiliary
-relation &lt;tt&gt;_∋_∈_&lt;/tt&gt; describing how variable lookup consumes a
+relation &lt;span class=inline-code&gt;_∋_∈_&lt;/span&gt; describing how variable lookup consumes a
 resource from the context. In the tensor case, we have arbitrarily
 decided that proof search will start on the first subgoal and thread
 the contexts as expected. The par one is slightly more subtle: we use
@@ -688,8 +919,8 @@ recover a derivation in ILL.&lt;/p&gt;
 
 
 &lt;p&gt;Defining this difference operator is however quite hard: we have
-nothing (apart from the derivation &lt;tt&gt;Γ ⊢ σ ⊣ Δ&lt;/tt&gt; itself) telling
-us that &lt;tt&gt;Δ&lt;/tt&gt; is indeed a sub-multiset of &lt;tt&gt;Γ&lt;/tt&gt;! This new
+nothing (apart from the derivation &lt;span class=inline-code&gt;Γ ⊢ σ ⊣ Δ&lt;/span&gt; itself) telling
+us that &lt;span class=inline-code&gt;Δ&lt;/span&gt; is indeed a sub-multiset of &lt;span class=inline-code&gt;Γ&lt;/span&gt;! This new
 obstacle teaches us our second principle:&lt;/p&gt;
 
 
@@ -698,37 +929,37 @@ obstacle teaches us our second principle:&lt;/p&gt;
 
 
 
-&lt;p&gt;It is hard for us to define &lt;tt&gt;Γ ─ Δ&lt;/tt&gt; because we don&#39;t know
-how &lt;tt&gt;Γ&lt;/tt&gt; relates to &lt;tt&gt;Δ&lt;/tt&gt;. But this can be dealt with by
+&lt;p&gt;It is hard for us to define &lt;span class=inline-code&gt;Γ ─ Δ&lt;/span&gt; because we don&#39;t know
+how &lt;span class=inline-code&gt;Γ&lt;/span&gt; relates to &lt;span class=inline-code&gt;Δ&lt;/span&gt;. But this can be dealt with by
 introducing the notion of consumption annotation: instead of defining
 the sequent calculus over contexts of assumptions, we can define it
-over &lt;tt&gt;Usage&lt;/tt&gt;s of &lt;i&gt;a given context&lt;/i&gt;. Consumption via the
+over &lt;span class=inline-code&gt;Usage&lt;/span&gt;s of &lt;i&gt;a given context&lt;/i&gt;. Consumption via the
 axiom rule turns available resources into consumed ones but, most
 importantly, it preserves the structure of it all!&lt;/p&gt;
 
 
 
-&lt;p&gt;A &lt;tt&gt;Usage&lt;/tt&gt; of a context &lt;tt&gt;γ&lt;/tt&gt; is defined in a pointwise
+&lt;p&gt;A &lt;span class=inline-code&gt;Usage&lt;/span&gt; of a context &lt;span class=inline-code&gt;γ&lt;/span&gt; is defined in a pointwise
 manner saying whether each assumption is an available resource or an
 already used one. A variable lookup will merely turn a previously
 available assumption into a used one. And checking that two outputs
-are synchronized now amounts to making sure that the &lt;tt&gt;Usage&lt;/tt&gt;s
-agree in a pointwise manner! The relation corresponding to &lt;tt&gt;Usage&lt;/tt&gt;
+are synchronized now amounts to making sure that the &lt;span class=inline-code&gt;Usage&lt;/span&gt;s
+agree in a pointwise manner! The relation corresponding to &lt;span class=inline-code&gt;Usage&lt;/span&gt;
 differences is also defined in a pointwise manner and we can prove that
-&lt;tt&gt;Γ ⊢ σ ⊣ Δ&lt;/tt&gt; being derivable implies that there is a difference
-&lt;tt&gt;E&lt;/tt&gt; such that &lt;tt&gt;E ⊢ σ&lt;/tt&gt;.&lt;/p&gt;
+&lt;span class=inline-code&gt;Γ ⊢ σ ⊣ Δ&lt;/span&gt; being derivable implies that there is a difference
+&lt;span class=inline-code&gt;E&lt;/span&gt; such that &lt;span class=inline-code&gt;E ⊢ σ&lt;/span&gt;.&lt;/p&gt;
 
 
 
 &lt;p&gt;The last unresolved problem is the way we are going to deal with
 left rules. The left rule for par is a direct loss of information:
-we move from having &lt;tt&gt;A &amp; B&lt;/tt&gt; as an assumption to either one
+we move from having &lt;span class=inline-code&gt;A &amp; B&lt;/span&gt; as an assumption to either one
 of the subformula. If the goal we are trying to prove is
-&lt;tt&gt;B &amp; A&lt;/tt&gt; then applying a left rule too early will lead us to
+&lt;span class=inline-code&gt;B &amp; A&lt;/span&gt; then applying a left rule too early will lead us to
 a dead end. The one for tensor is typically needed before using a
 right introduction rule for tensor itself: the two subformulas of
 the assumptions may be used in different subproofs e.g. when proving
-&lt;tt&gt;A ⊗ B&lt;/tt&gt; with &lt;tt&gt;A ⊗ B&lt;/tt&gt; in the context. But it could
+&lt;span class=inline-code&gt;A ⊗ B&lt;/span&gt; with &lt;span class=inline-code&gt;A ⊗ B&lt;/span&gt; in the context. But it could
 also be applied earlier on without any dramatic consequences.
 Hence our last slogan:&lt;/p&gt;
 
@@ -743,8 +974,8 @@ it is possible to formulate the notion of usage in a way that completely
 frees us from having to deal with them: rather than having a binary
 notion of usage for assumptions, we can have a more subtle one describing
 how an assumption may have been partially used so far. For example,
-we may write &lt;tt&gt;[ A ]⊗ B&lt;/tt&gt; to mean that &lt;tt&gt;A&lt;/tt&gt; is entirely
-available whilst &lt;tt&gt;B&lt;/tt&gt; is partially used. A careful analysis
+we may write &lt;span class=inline-code&gt;[ A ]⊗ B&lt;/span&gt; to mean that &lt;span class=inline-code&gt;A&lt;/span&gt; is entirely
+available whilst &lt;span class=inline-code&gt;B&lt;/span&gt; is partially used. A careful analysis
 of a derivation in the more general calculus will allow us to
 insert left rules wherever needed.&lt;/p&gt;
 
@@ -842,19 +1073,19 @@ written in haskell and I figured I could extend it to meet my needs rather
 easily. As it turned out, getting travis to build and deploy the pages
 was probably the least painful step in the whole process; in comparison
 figuring out how to parse &lt;a href=&quot;https://github.com/gallais/gallais.github.io/tree/source/src/Text/BBCode&quot;&gt;
-the flavour of &lt;tt&gt;BBCode&lt;/tt&gt;&lt;/a&gt; I use for these posts was hell
+the flavour of &lt;span class=inline-code&gt;BBCode&lt;/span&gt;&lt;/a&gt; I use for these posts was hell
 &lt;a id=&quot;reftop1&quot; href=&quot;#refbot1&quot;&gt;[1]&lt;/a&gt;.&lt;/p&gt;
 
 
 
 &lt;p&gt;The &lt;a href=&quot;https://github.com/gallais/gallais.github.io/blob/master/.travis.yml&quot;&gt;.travis.yml
 file&lt;/a&gt; is sligtly more complicated this time given that I need to
-push the generated html pages to the &lt;tt&gt;master&lt;/tt&gt; branch of the
+push the generated html pages to the &lt;span class=inline-code&gt;master&lt;/span&gt; branch of the
 repository. To do so, one needs to generate personal access tokens
 &lt;a href=&quot;https://github.com/settings/applications&quot;&gt;on github&lt;/a&gt; and then
 &lt;a href=&quot;http://docs.travis-ci.com/user/encryption-keys&quot;&gt;encrypt them using
-&lt;tt&gt;travis&lt;/tt&gt;&lt;/a&gt;. If you look closely at the file, that&#39;s the
-&lt;tt&gt;${GH_TOKEN}&lt;/tt&gt; I use when pushing.&lt;/p&gt;
+&lt;span class=inline-code&gt;travis&lt;/span&gt;&lt;/a&gt;. If you look closely at the file, that&#39;s the
+&lt;span class=inline-code&gt;${GH_TOKEN}&lt;/span&gt; I use when pushing.&lt;/p&gt;
 
 
 
@@ -929,7 +1160,7 @@ for the standard library which tends to rely on &quot;newly&quot; (as in &quot;i
 last few months&quot;) introduced features. The obvious solution was to,
 somehow, get travis to generate a static binary when compiling and
 testing Agda and upload it on Dropbox. This is the purpose of my
-&lt;a href=&quot;https://github.com/gallais/agda/tree/build-binary&quot;&gt;&lt;tt&gt;build-binary&lt;/tt&gt;&lt;/a&gt;
+&lt;a href=&quot;https://github.com/gallais/agda/tree/build-binary&quot;&gt;&lt;span class=inline-code&gt;build-binary&lt;/span&gt;&lt;/a&gt;
 branch.&lt;/p&gt;
 
 
@@ -981,10 +1212,10 @@ that. If you have suggestions with respect to alternative hosting
 solutions making it easier for other people&#39;s scripts to pull the
 tarballs, &lt;a href=&quot;/contact.html&quot;&gt;&lt;b&gt;please contact me&lt;/b&gt;&lt;/a&gt;!&lt;/p&gt;
 
-&lt;h3&gt;Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;You should not conclude anything about &lt;tt&gt;parsec&lt;/tt&gt; from
+&lt;h3&gt;Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;You should not conclude anything about &lt;span class=inline-code&gt;parsec&lt;/span&gt; from
 that: I had no prior experience in parsing so I had a lot to learn
 and spent quite some time trying various libraries and parser generators
-before finally settling for &lt;tt&gt;parsec&lt;/tt&gt;. Which does the job as you
+before finally settling for &lt;span class=inline-code&gt;parsec&lt;/span&gt;. Which does the job as you
 can see.&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot2&quot; href=&quot;#reftop2&quot;&gt;[2]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;A working travis build would be the best demonstration that
 what you are suggesting is indeed the solution!&lt;/div&gt;&lt;/p&gt;&lt;/div&gt;</description><guid isPermaLink="true">http://blog.gallais.org/travis-builds.html</guid><pubDate>Wed, 11 Feb 2015 13:37:00 UTC</pubDate></item><item><title>Cyclic Lists, Purely</title><link>http://blog.gallais.org/cyclic-list-purely.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Cyclic Lists, Purely&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://github.com/gallais/potpourri/blob/master/haskell/cyclic/CyclicList.hs&quot;&gt;Haskell code&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;http://www.citeulike.org/user/gallais/article/1244296&quot;&gt;Fegaras &amp; Sheard&lt;/a&gt;&lt;/li&gt;
@@ -1019,10 +1250,10 @@ removing some of them from the cycle.&lt;/p&gt;
 
 
 &lt;p&gt;Cyclic lists are represented using a mixed-variant datatype. On
-top of the expected &lt;tt&gt;CNil&lt;/tt&gt; and &lt;tt&gt;Cons&lt;/tt&gt; shared with usual
-lists, a &lt;tt&gt;CRec&lt;/tt&gt; constructor is provided. It declares a pointer
+top of the expected &lt;span class=inline-code&gt;CNil&lt;/span&gt; and &lt;span class=inline-code&gt;Cons&lt;/span&gt; shared with usual
+lists, a &lt;span class=inline-code&gt;CRec&lt;/span&gt; constructor is provided. It declares a pointer
 which may be used later on to represent that very node. It should be
-noted that &lt;tt&gt;CRec&lt;/tt&gt; is &lt;tt&gt;Cons&lt;/tt&gt;-like in order to guarantee
+noted that &lt;span class=inline-code&gt;CRec&lt;/span&gt; is &lt;span class=inline-code&gt;Cons&lt;/span&gt;-like in order to guarantee
 that all cycles are productive.&lt;/p&gt;
 
 
@@ -1037,7 +1268,7 @@ that all cycles are productive.&lt;/p&gt;
 to handle the pointer declaration in a sort of Higher Order
 Abstract Syntax fashion. It makes giving a semantics for it in terms
 of streams quite easy: one just needs to feed the function stored in
-&lt;tt&gt;CRec&lt;/tt&gt; with the list itself.&lt;/p&gt;
+&lt;span class=inline-code&gt;CRec&lt;/span&gt; with the list itself.&lt;/p&gt;
 
 
 
@@ -1056,7 +1287,7 @@ toStream xs@(CRec x r) = x : toStream (r xs)&lt;/p&gt;
 out in Ghani et al. to justify their favouring of a more intensional
 approach to cycle representation. Most of them relate to the fact
 that it does not put enough restrictions on the ways one may use
-the variable provided by the &lt;tt&gt;CRec&lt;/tt&gt; constructor. As a
+the variable provided by the &lt;span class=inline-code&gt;CRec&lt;/span&gt; constructor. As a
 consequence, the encoding lacks canonicity.&lt;/p&gt;
 
 
@@ -1078,8 +1309,8 @@ a pointer it will never use:&lt;/p&gt;
 
 
 &lt;p&gt;Or introduce multiple pointers only one of which is meant to be
-declared whilst the other ones are &lt;tt&gt;CRec&lt;/tt&gt; cells misused as
-&lt;tt&gt;Cons&lt;/tt&gt; ones. This leads to the possibility of different
+declared whilst the other ones are &lt;span class=inline-code&gt;CRec&lt;/span&gt; cells misused as
+&lt;span class=inline-code&gt;Cons&lt;/span&gt; ones. This leads to the possibility of different
 representations of the same object:&lt;/p&gt;
 
 
@@ -1108,9 +1339,9 @@ cycle&lt;/h3&gt;
 imperfections, it is hard to define basic functions without
 unwinding the cycle. It is for instance impossible to map a
 function across a list without unfoding it. Indeed, using a
-&lt;tt&gt;CRec&lt;/tt&gt; constructor in the last case would provide us
-with a &lt;tt&gt;CList b&lt;/tt&gt; element but &lt;tt&gt;r&lt;/tt&gt; expects a
-&lt;tt&gt;CList a&lt;/tt&gt; one.&lt;/p&gt;
+&lt;span class=inline-code&gt;CRec&lt;/span&gt; constructor in the last case would provide us
+with a &lt;span class=inline-code&gt;CList b&lt;/span&gt; element but &lt;span class=inline-code&gt;r&lt;/span&gt; expects a
+&lt;span class=inline-code&gt;CList a&lt;/span&gt; one.&lt;/p&gt;
 
 
 
@@ -1137,7 +1368,7 @@ the very interesting &lt;a href=&quot;https://tel.github.io/2014/07/15/mutable_a
 explaining how the implementation used rank 2 polymorphism to avoid
 references escaping their environment. It was only natural to recycle
 that knowledge in our case to avoid all the API abuses evoked in the
-previous section. The new &lt;tt&gt;CList&lt;/tt&gt; type constructor takes two
+previous section. The new &lt;span class=inline-code&gt;CList&lt;/span&gt; type constructor takes two
 arguments; the first one is the type of the elements it contains
 whilst the second one is a phantom type used to enforce that the
 constructor are only ever used in the way they were meant to.&lt;/p&gt;
@@ -1151,12 +1382,12 @@ constructor are only ever used in the way they were meant to.&lt;/p&gt;
 
 
 
-&lt;p&gt;&lt;tt&gt;CRec&lt;/tt&gt;&#39;s argument has to be polymorphic in the phantom
-type which means that it may not use &lt;tt&gt;CRec&lt;/tt&gt; or &lt;tt&gt;CNil&lt;/tt&gt;
-both of which fix the phantom type to &lt;tt&gt;Closed&lt;/tt&gt;. In effect,
-it has to be a finite number of &lt;tt&gt;Cons&lt;/tt&gt; followed by the
+&lt;p&gt;&lt;span class=inline-code&gt;CRec&lt;/span&gt;&#39;s argument has to be polymorphic in the phantom
+type which means that it may not use &lt;span class=inline-code&gt;CRec&lt;/span&gt; or &lt;span class=inline-code&gt;CNil&lt;/span&gt;
+both of which fix the phantom type to &lt;span class=inline-code&gt;Closed&lt;/span&gt;. In effect,
+it has to be a finite number of &lt;span class=inline-code&gt;Cons&lt;/span&gt; followed by the
 variable provided. In other words, an element of type
-&lt;tt&gt;CList a Closed&lt;/tt&gt; describes precisely a potentially cyclic
+&lt;span class=inline-code&gt;CList a Closed&lt;/span&gt; describes precisely a potentially cyclic
 list &lt;a id=&quot;reftop1&quot; href=&quot;#refbot1&quot;&gt;[1]&lt;/a&gt;. Hence the following type alias:&lt;/p&gt;
 
 
@@ -1171,7 +1402,7 @@ system which detects that we are trying to conflate types which are
 incompatible when we declare a pointer but forget to use it, when we
 declare multiple ones, etc. That is already a nice change but we
 are still facing a major challenge: writing functions such as
-&lt;tt&gt;map&lt;/tt&gt; without unfolding the cycle. This is what Ghani et al.
+&lt;span class=inline-code&gt;map&lt;/span&gt; without unfolding the cycle. This is what Ghani et al.
 write on that topic:&lt;/p&gt;
 
 
@@ -1188,23 +1419,23 @@ functions well&quot;.&lt;/p&gt;
 &lt;p&gt;This was absolutely true in the situation they were facing. But
 by exploiting the type system, we have managed to root out an
 awful lot of unwanted constructs. To the point that we now know
-for sure that there is &lt;i&gt;at most one&lt;/i&gt; &lt;tt&gt;CRec&lt;/tt&gt; constructor
-in a &lt;tt&gt;List a&lt;/tt&gt;. This implies in particular that we can detect
-where the pointer declared by a &lt;tt&gt;CRec&lt;/tt&gt; is used. Indeed, if
-&lt;tt&gt;xs&lt;/tt&gt; is equal to &lt;tt&gt;CRec x f&lt;/tt&gt; then we know for sure that
-&lt;tt&gt;f xs&lt;/tt&gt; will contain a &lt;tt&gt;CRec&lt;/tt&gt; and that it will be the
-head constructor of &lt;tt&gt;xs&lt;/tt&gt; showing up where the pointer was
+for sure that there is &lt;i&gt;at most one&lt;/i&gt; &lt;span class=inline-code&gt;CRec&lt;/span&gt; constructor
+in a &lt;span class=inline-code&gt;List a&lt;/span&gt;. This implies in particular that we can detect
+where the pointer declared by a &lt;span class=inline-code&gt;CRec&lt;/span&gt; is used. Indeed, if
+&lt;span class=inline-code&gt;xs&lt;/span&gt; is equal to &lt;span class=inline-code&gt;CRec x f&lt;/span&gt; then we know for sure that
+&lt;span class=inline-code&gt;f xs&lt;/span&gt; will contain a &lt;span class=inline-code&gt;CRec&lt;/span&gt; and that it will be the
+head constructor of &lt;span class=inline-code&gt;xs&lt;/span&gt; showing up where the pointer was
 used.&lt;/p&gt;
 
 
 
-&lt;p&gt;This means that we can actually build a &lt;tt&gt;cfold&lt;/tt&gt; function
+&lt;p&gt;This means that we can actually build a &lt;span class=inline-code&gt;cfold&lt;/span&gt; function
 which will not unwind the cycle unless we want it to. Let&#39;s start
 by writing down the most general type for it. The two first arguments
-corresponds to the usual &lt;tt&gt;Cons&lt;/tt&gt; and &lt;tt&gt;CNil&lt;/tt&gt; cases with
+corresponds to the usual &lt;span class=inline-code&gt;Cons&lt;/span&gt; and &lt;span class=inline-code&gt;CNil&lt;/span&gt; cases with
 the right phantom types sprinkled where necessary. The third one
 is the one dealing with cycles and it mimics really closely the type
-of &lt;tt&gt;CRec&lt;/tt&gt;. The whole thing is implemented in terms of an
+of &lt;span class=inline-code&gt;CRec&lt;/span&gt;. The whole thing is implemented in terms of an
 auxiliary function.&lt;/p&gt;
 
 
@@ -1220,9 +1451,9 @@ cfold c n r = goCRec&lt;/p&gt;
 
 &lt;p&gt;This auxiliary function unfolds the list argument applying the
 appropriate combinator to the constructor&#39;s arguments and the
-the induction hypothesis. As its name &lt;tt&gt;goCRec&lt;/tt&gt; suggests, it
-traverses the &lt;tt&gt;CRec&lt;/tt&gt; constructor before handing over the rest
-of the work to &lt;tt&gt;stopCRec&lt;/tt&gt;.&lt;/p&gt;
+the induction hypothesis. As its name &lt;span class=inline-code&gt;goCRec&lt;/span&gt; suggests, it
+traverses the &lt;span class=inline-code&gt;CRec&lt;/span&gt; constructor before handing over the rest
+of the work to &lt;span class=inline-code&gt;stopCRec&lt;/span&gt;.&lt;/p&gt;
 
 
 
@@ -1233,10 +1464,10 @@ goCRec xs@(CRec x p) = r x $ stopCRec (p xs)&lt;/p&gt;
 
 
 
-&lt;p&gt;&lt;tt&gt;stopCRec&lt;/tt&gt; is similarly structurally working its way
+&lt;p&gt;&lt;span class=inline-code&gt;stopCRec&lt;/span&gt; is similarly structurally working its way
 through the list except that it posesses an induction hypothesis
-&lt;tt&gt;ih&lt;/tt&gt; obtained earlier on by &lt;tt&gt;goCRec&lt;/tt&gt;. When faced with
-a &lt;tt&gt;CRec&lt;/tt&gt;, we know for sure that we have just followed the
+&lt;span class=inline-code&gt;ih&lt;/span&gt; obtained earlier on by &lt;span class=inline-code&gt;goCRec&lt;/span&gt;. When faced with
+a &lt;span class=inline-code&gt;CRec&lt;/span&gt;, we know for sure that we have just followed the
 pointer back to where it was declared. As a consequence, we return
 the induction hypothesis rather than unfolding the cycle yet
 another time.&lt;/p&gt;
@@ -1250,7 +1481,7 @@ stopCRec (CRec _ _)  ih = ih&lt;/p&gt;
 
 
 &lt;p&gt;Now that we have this induction principle, it is really easy to
-define a &lt;tt&gt;cmap&lt;/tt&gt; which outputs a list with a structure
+define a &lt;span class=inline-code&gt;cmap&lt;/span&gt; which outputs a list with a structure
 identical to the one we started with.&lt;/p&gt;
 
 
@@ -1260,9 +1491,9 @@ cmap f = cfold (Cons . f) CNil (CRec . f)&lt;/p&gt;
 
 
 
-&lt;p&gt;And indeed, &lt;tt&gt;cmap (+1) $ CRec 1 (Cons 2)&lt;/tt&gt; evaluates down to
-&lt;tt&gt;CRec 2 (Cons 3)&lt;/tt&gt; rather than the detestable
-&lt;tt&gt;Cons 2 (Cons 3 (Cons 2 (...)))&lt;/tt&gt; the naïve solution used to
+&lt;p&gt;And indeed, &lt;span class=inline-code&gt;cmap (+1) $ CRec 1 (Cons 2)&lt;/span&gt; evaluates down to
+&lt;span class=inline-code&gt;CRec 2 (Cons 3)&lt;/span&gt; rather than the detestable
+&lt;span class=inline-code&gt;Cons 2 (Cons 3 (Cons 2 (...)))&lt;/span&gt; the naïve solution used to
 produce.&lt;/p&gt;
 
 
@@ -1279,8 +1510,8 @@ type:&lt;/p&gt;
 
 
 
-&lt;p&gt;An elegant use case of this &lt;tt&gt;cfoldRec&lt;/tt&gt; is the definition
-of the &lt;tt&gt;Show&lt;/tt&gt; instance for &lt;tt&gt;List a&lt;/tt&gt; which allows us
+&lt;p&gt;An elegant use case of this &lt;span class=inline-code&gt;cfoldRec&lt;/span&gt; is the definition
+of the &lt;span class=inline-code&gt;Show&lt;/span&gt; instance for &lt;span class=inline-code&gt;List a&lt;/span&gt; which allows us
 to display a finite string representing the cyclic structure in its
 entirety. When we encounter the pointer declaration, we output
 &quot;rec X. &quot; and keep showing the rest of the list but when the pointer
@@ -1294,9 +1525,9 @@ is used, we simply output &quot;X&quot; and stop.&lt;/p&gt;
 
 
 
-&lt;p&gt;And, as we expected, &lt;tt&gt;show $ CRec 1 (Cons 2)&lt;/tt&gt; now reduces
-to the finite string &lt;tt&gt;&quot;rec X. 1 : 2 : X&quot;&lt;/tt&gt;. It is also possible
-to recover a &lt;tt&gt;fold&lt;/tt&gt;-style function unwinding the cycle by
+&lt;p&gt;And, as we expected, &lt;span class=inline-code&gt;show $ CRec 1 (Cons 2)&lt;/span&gt; now reduces
+to the finite string &lt;span class=inline-code&gt;&quot;rec X. 1 : 2 : X&quot;&lt;/span&gt;. It is also possible
+to recover a &lt;span class=inline-code&gt;fold&lt;/span&gt;-style function unwinding the cycle by
 tying the knot in the third argument: the induction hypothesis
 will just be the whole subcomputation itself!&lt;/p&gt;
 
@@ -1322,7 +1553,7 @@ toStream = cfold&#39; (:) []&lt;/p&gt;
 
 &lt;p&gt;There are still plenty of functions to implement on this
 representation some of which may raise interesting questions:
-&lt;tt&gt;czip&lt;/tt&gt; will surely involve computing a least common
+&lt;span class=inline-code&gt;czip&lt;/span&gt; will surely involve computing a least common
 multiple. And it will enable us to define an &lt;i&gt;extensional&lt;/i&gt;
 equality on these cyclic structures. Exciting perspectives.&lt;/p&gt;
 
@@ -1335,7 +1566,7 @@ equality on these cyclic structures. Exciting perspectives.&lt;/p&gt;
 &lt;p&gt;GADTs combined with higher rank polymorphism allowed us to bake
 in invariants which were sufficient for us to write more useful
 functions than the rather untyped approach led us to believe was
-possible. The type of &lt;tt&gt;cfold&lt;/tt&gt; lets us decide at any time
+possible. The type of &lt;span class=inline-code&gt;cfold&lt;/span&gt; lets us decide at any time
 whether we want to unwind the cycle or not.&lt;/p&gt;
 
 
@@ -1405,7 +1636,7 @@ also formalizes lets us identify clearly the constructors which are binders.&lt;
 
 &lt;p&gt;Now that we have seen that this non-regularity can be useful, we would like
 to know whether it is a safe feature. After all, having a system in which
-&lt;tt&gt;Type : Type&lt;/tt&gt; can simplify things quite a lot but it comes at the cost
+&lt;span class=inline-code&gt;Type : Type&lt;/span&gt; can simplify things quite a lot but it comes at the cost
 of being inconsistent...&lt;/p&gt;
 
 
@@ -1428,8 +1659,8 @@ file&lt;/a&gt;.&lt;/p&gt;
 
 
 
-&lt;p&gt;We start by defining our simple lambda calculus &lt;tt&gt;Lam&lt;/tt&gt; equipped
-with a let binder. The parameter &lt;tt&gt;A&lt;/tt&gt; represents the variables available
+&lt;p&gt;We start by defining our simple lambda calculus &lt;span class=inline-code&gt;Lam&lt;/span&gt; equipped
+with a let binder. The parameter &lt;span class=inline-code&gt;A&lt;/span&gt; represents the variables available
 in scope; it needs therefore to be modified every time a binder introduces
 fresh ones &lt;a id=&quot;reftop2&quot; href=&quot;#refbot2&quot;&gt;[2]&lt;/a&gt;:&lt;/p&gt;
 
@@ -1450,9 +1681,9 @@ fresh ones &lt;a id=&quot;reftop2&quot; href=&quot;#refbot2&quot;&gt;[2]&lt;/a&g
 
 &lt;p&gt;Given that this argument varies in the various recursive positions,
 one could consider calling it an index. This is where we run into troubles:
-the value &lt;tt&gt;A&lt;/tt&gt; used to be in context because it was treated like a
+the value &lt;span class=inline-code&gt;A&lt;/span&gt; used to be in context because it was treated like a
 parameter; now that we consider it to be an index, every constructor has to
-introduce &lt;tt&gt;A&lt;/tt&gt; to be able to mention it. But &lt;tt&gt;A&lt;/tt&gt; is large which
+introduce &lt;span class=inline-code&gt;A&lt;/span&gt; to be able to mention it. But &lt;span class=inline-code&gt;A&lt;/span&gt; is large which
 forces the datatype declaration to live one level up.&lt;/p&gt;
 
 
@@ -1466,8 +1697,8 @@ forces the datatype declaration to live one level up.&lt;/p&gt;
 
 
 &lt;p&gt;This is quite clearly not a satisfactory solution. It is, for instance, now
-impossible to define the monadic &lt;tt&gt;join&lt;/tt&gt; for &lt;tt&gt;Lam&lt;/tt&gt; because
-&lt;tt&gt;Lam (Lam A)&lt;/tt&gt; is not even a type one can form! If we do need to introduce
+impossible to define the monadic &lt;span class=inline-code&gt;join&lt;/span&gt; for &lt;span class=inline-code&gt;Lam&lt;/span&gt; because
+&lt;span class=inline-code&gt;Lam (Lam A)&lt;/span&gt; is not even a type one can form! If we do need to introduce
 an index to track down the modifications made to the non regular parameter then
 it&#39;d better be a small one. This is precisely what the encoding does.&lt;/p&gt;
 
@@ -1496,13 +1727,13 @@ is as follows.&lt;/p&gt;
 
 
 
-&lt;p&gt;&lt;tt&gt;`rt&lt;/tt&gt; represents the root of the tree and &lt;tt&gt;`bd&lt;/tt&gt; (for &quot;binder&quot;)
-represents both &lt;tt&gt;`lam&lt;/tt&gt; and &lt;tt&gt;`let_`in_&lt;/tt&gt; because we are only
+&lt;p&gt;&lt;span class=inline-code&gt;`rt&lt;/span&gt; represents the root of the tree and &lt;span class=inline-code&gt;`bd&lt;/span&gt; (for &quot;binder&quot;)
+represents both &lt;span class=inline-code&gt;`lam&lt;/span&gt; and &lt;span class=inline-code&gt;`let_`in_&lt;/span&gt; because we are only
 interested in the number of variables introduced by a binding site. We note
-that one can blithely forget about the &lt;tt&gt;`app&lt;/tt&gt; constructors one crossed
-because they do not alter the parameter. The &lt;tt&gt;decode&lt;/tt&gt; function defining
+that one can blithely forget about the &lt;span class=inline-code&gt;`app&lt;/span&gt; constructors one crossed
+because they do not alter the parameter. The &lt;span class=inline-code&gt;decode&lt;/span&gt; function defining
 the semantics of these paths is straightforward: the root induces the identity
-and a binding site extends the environment with &lt;tt&gt;n&lt;/tt&gt; new variables.&lt;/p&gt;
+and a binding site extends the environment with &lt;span class=inline-code&gt;n&lt;/span&gt; new variables.&lt;/p&gt;
 
 
 
@@ -1516,7 +1747,7 @@ decode (`bd n p) A = n + decode A p&lt;/p&gt;
 indices whilst keeping it small. As one would expect, it is possible to prove
 that this inductive type is in bijection with the original one. The usual
 problem arise with the termination checker when dealing with the nesting
-&lt;tt&gt;Vec (Lam A) n&lt;/tt&gt; but, as usual, inlining &lt;tt&gt;Vec.map&lt;/tt&gt; is sufficient
+&lt;span class=inline-code&gt;Vec (Lam A) n&lt;/span&gt; but, as usual, inlining &lt;span class=inline-code&gt;Vec.map&lt;/span&gt; is sufficient
 to convince Agda that everything is fine.&lt;/p&gt;
 
 
@@ -1543,14 +1774,14 @@ and stayed because I kept seeing other interesting topics. It&#39;s a trap.&lt;/
 
 &lt;h3&gt;Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;Page 4, &lt;a href=&quot;http://www.citeulike.org/user/gallais/article/2399086&quot;&gt;
 Finger trees: a simple general-purpose data structure&lt;/a&gt; by Ralf Hinze, Ross
-Paterson.&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot2&quot; href=&quot;#reftop2&quot;&gt;[2]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;&lt;tt&gt;_+_&lt;/tt&gt; of type &lt;tt&gt;ℕ → Set → Set&lt;/tt&gt; is used here
+Paterson.&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot2&quot; href=&quot;#reftop2&quot;&gt;[2]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;&lt;span class=inline-code&gt;_+_&lt;/span&gt; of type &lt;span class=inline-code&gt;ℕ → Set → Set&lt;/span&gt; is used here
 to mean that a finite number of new bound variable have been introduced by the
 binding construct.&lt;/div&gt;&lt;/p&gt;&lt;/div&gt;</description><guid isPermaLink="true">http://blog.gallais.org/non-regular-parameters.html</guid><pubDate>Thu, 17 Jul 2014 13:37:00 UTC</pubDate></item><item><title>Lazy Weakening and Equality Test</title><link>http://blog.gallais.org/lazy-lambda.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Lazy Weakening and Equality Test&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://www.fpcomplete.com/user/edwardk/bound&quot;&gt;Intro to bound&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;http://hackage.haskell.org/package/bound&quot;&gt;bound on Hackage&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html&quot;&gt;Colored Agda&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;
 
 
-&lt;p id=chapo&gt;One of the key features of &lt;tt&gt;bound&lt;/tt&gt; is that it
+&lt;p id=chapo&gt;One of the key features of &lt;span class=inline-code&gt;bound&lt;/span&gt; is that it
 introduces redundancies in the representation of syntaxes in
 order to avoid traversing entire subterms just to apply a
 weakening. However, equality testing currently quotients out
@@ -1570,9 +1801,9 @@ deliver it when asked to. Better late than never.&lt;/p&gt;
 
 
 &lt;p&gt;Our running example will be the untyped lambda calculus
-with its well-known 3 constructors: &lt;tt&gt;var&lt;/tt&gt;, &lt;tt&gt;lam&lt;/tt&gt; and
-&lt;tt&gt;app&lt;/tt&gt;. We will start by motivating the use of the notion
-of &lt;tt&gt;Scope&lt;/tt&gt; when dealing with syntaxes with binding both for
+with its well-known 3 constructors: &lt;span class=inline-code&gt;var&lt;/span&gt;, &lt;span class=inline-code&gt;lam&lt;/span&gt; and
+&lt;span class=inline-code&gt;app&lt;/span&gt;. We will start by motivating the use of the notion
+of &lt;span class=inline-code&gt;Scope&lt;/span&gt; when dealing with syntaxes with binding both for
 its added safety, genericity and efficiency. We will then move on
 to the actual meat of this post: the lazy equality test.&lt;/p&gt;
 
@@ -1628,7 +1859,7 @@ to happen after a new variable has been bound.&lt;/p&gt;
 
 
 &lt;p&gt;Typed alternatives to de Bruijn indices do exist; we can e.g.
-think of terms well-scoped by constructions using &lt;tt&gt;Fin&lt;/tt&gt;
+think of terms well-scoped by constructions using &lt;span class=inline-code&gt;Fin&lt;/span&gt;
 or the non-regular datatypes reflecting the indices at the type level
 we are going to use:&lt;/p&gt;
 
@@ -1641,10 +1872,10 @@ we are going to use:&lt;/p&gt;
 
 
 
-&lt;p&gt;&lt;tt&gt;Lam&lt;/tt&gt; quite clearly is a functor hence the existence of
-a higher-order function &lt;tt&gt;map&lt;/tt&gt; which loosely corresponds
+&lt;p&gt;&lt;span class=inline-code&gt;Lam&lt;/span&gt; quite clearly is a functor hence the existence of
+a higher-order function &lt;span class=inline-code&gt;map&lt;/span&gt; which loosely corresponds
 to the notion of renaming / weakening &lt;a id=&quot;reftop2&quot; href=&quot;#refbot2&quot;&gt;[2]&lt;/a&gt;.
-The &lt;tt&gt;var&lt;/tt&gt; and &lt;tt&gt;app&lt;/tt&gt; cases are unchanged but the type
+The &lt;span class=inline-code&gt;var&lt;/span&gt; and &lt;span class=inline-code&gt;app&lt;/span&gt; cases are unchanged but the type
 of the lamdba&#39;s body now rejects the erroneous recursive call
 described earlier. We are forced to both extend the substitution
 with the new bound variable which is unchanged, and weaken the
@@ -1678,7 +1909,7 @@ in the representation. This can be done by letting the variables
 in a subterm be either bound by the nearest binder or &lt;i&gt;whole&lt;/i&gt;
 subterms living in the non-extended context (aka weakened subterms).
 This naturally translates to the following notions of
-&lt;tt&gt;Scope&lt;/tt&gt;:&lt;/p&gt;
+&lt;span class=inline-code&gt;Scope&lt;/span&gt;:&lt;/p&gt;
 
 
 
@@ -1688,10 +1919,10 @@ Scope F A = F (Maybe (F A))&lt;/p&gt;
 
 
 &lt;p&gt;In this case, the definition is simple enough that Agda has no
-problem seeing that the &lt;tt&gt;Scope&lt;/tt&gt; transformer preserves
-positivity and that &lt;tt&gt;Lam&lt;/tt&gt; is therefore a legal inductive
+problem seeing that the &lt;span class=inline-code&gt;Scope&lt;/span&gt; transformer preserves
+positivity and that &lt;span class=inline-code&gt;Lam&lt;/span&gt; is therefore a legal inductive
 definition. However in more intricate examples, e.g. when describing
-a universe of syntaxes with &lt;tt&gt;Scope&lt;/tt&gt;s, only a tool like
+a universe of syntaxes with &lt;span class=inline-code&gt;Scope&lt;/span&gt;s, only a tool like
 &lt;a href=&quot;http://www2.tcs.ifi.lmu.de/~abel/miniagda/&quot;&gt;MiniAgda&lt;/a&gt;
 which allows for positivity annotations will accept the definition
 as valid.&lt;/p&gt;
@@ -1713,7 +1944,7 @@ as valid.&lt;/p&gt;
 equality testing? We have added redundancies which therefore
 need to be quotiented out when comparing two terms. The simplest
 way to implement such a comparison function is to define a
-function &lt;tt&gt;flatten&lt;/tt&gt; which will push the weakenings into the
+function &lt;span class=inline-code&gt;flatten&lt;/span&gt; which will push the weakenings into the
 leaves of the terms thus producing terms in &lt;i&gt;de Bruijn normal
 form&lt;/i&gt;.&lt;/p&gt;
 
@@ -1749,8 +1980,8 @@ current subterms.&lt;/p&gt;
 
 
 &lt;p&gt;We introduce this notion of inclusion &lt;a id=&quot;reftop3&quot; href=&quot;#refbot3&quot;&gt;[3]&lt;/a&gt;
-whose 2nd constructor (&lt;tt&gt;↑_&lt;/tt&gt;) tags the moment one goes under
-a lambda abstraction whilst the 3rd one (&lt;tt&gt;◂_&lt;/tt&gt;) tags the
+whose 2nd constructor (&lt;span class=inline-code&gt;↑_&lt;/span&gt;) tags the moment one goes under
+a lambda abstraction whilst the 3rd one (&lt;span class=inline-code&gt;◂_&lt;/span&gt;) tags the
 moment one encounters a weakening. &lt;/p&gt;
 
 
@@ -1767,8 +1998,8 @@ moment one encounters a weakening. &lt;/p&gt;
 
 
 &lt;p&gt;Now, we are ready to describe the comparison of two terms living
-in their respective local contexts &lt;tt&gt;A&lt;/tt&gt; and &lt;tt&gt;B&lt;/tt&gt; both
-sharing a common super-context &lt;tt&gt;T&lt;/tt&gt;.&lt;/p&gt;
+in their respective local contexts &lt;span class=inline-code&gt;A&lt;/span&gt; and &lt;span class=inline-code&gt;B&lt;/span&gt; both
+sharing a common super-context &lt;span class=inline-code&gt;T&lt;/span&gt;.&lt;/p&gt;
 
 
 
@@ -1820,7 +2051,7 @@ further.&lt;/p&gt;
 mostly syntax-directed except for the two last rules which happen
 to commute. Turning this specification into a recursive algorithm
 will therefore just be a matter of picking an order in which to
-check that either &lt;tt&gt;EQvarFre₁&lt;/tt&gt; or &lt;tt&gt;EQvarFre₂&lt;/tt&gt; applies.
+check that either &lt;span class=inline-code&gt;EQvarFre₁&lt;/span&gt; or &lt;span class=inline-code&gt;EQvarFre₂&lt;/span&gt; applies.
 Which is good news when you are in the business of actually
 deciding equality.&lt;/p&gt;
 
@@ -1834,7 +2065,7 @@ comparison&lt;/a&gt;&lt;/h4&gt;
 
 &lt;p&gt;Variable comparison is always done up to weakenings. We count
 the numbers of weakenings encountered thus far respectively in
-&lt;tt&gt;kA&lt;/tt&gt; and &lt;tt&gt;kB&lt;/tt&gt; and manage (in/de)crements based on
+&lt;span class=inline-code&gt;kA&lt;/span&gt; and &lt;span class=inline-code&gt;kB&lt;/span&gt; and manage (in/de)crements based on
 the tokens we stumble upon.&lt;/p&gt;
 
 
@@ -1845,8 +2076,8 @@ the tokens we stumble upon.&lt;/p&gt;
 
 
 &lt;p&gt;When both context inclusions are synchronized on a lambda
-binder (tagged by &lt;tt&gt;↑_&lt;/tt&gt; in the derivations) and no weakening
-whatsoever has been applied (both &lt;tt&gt;kA&lt;/tt&gt; and &lt;tt&gt;kB&lt;/tt&gt; are
+binder (tagged by &lt;span class=inline-code&gt;↑_&lt;/span&gt; in the derivations) and no weakening
+whatsoever has been applied (both &lt;span class=inline-code&gt;kA&lt;/span&gt; and &lt;span class=inline-code&gt;kB&lt;/span&gt; are
 zero) then we can conclude that the variables are indeed equal.&lt;/p&gt;
 
 
@@ -1856,8 +2087,8 @@ zero) then we can conclude that the variables are indeed equal.&lt;/p&gt;
 
 
 &lt;p&gt;When, on the other hand, they both claim to be referring to a
-binder which is at least one level up (both &lt;tt&gt;kA&lt;/tt&gt; and
-&lt;tt&gt;kB&lt;/tt&gt; are non-zero), one can forget about the binder at hand
+binder which is at least one level up (both &lt;span class=inline-code&gt;kA&lt;/span&gt; and
+&lt;span class=inline-code&gt;kB&lt;/span&gt; are non-zero), one can forget about the binder at hand
 and go explore the context inclusions upward.&lt;/p&gt;
 
 
@@ -1867,7 +2098,7 @@ and go explore the context inclusions upward.&lt;/p&gt;
 
 
 &lt;p&gt;Finally, when we encounter a weakening (marked with a
-&lt;tt&gt;◂_&lt;/tt&gt;), we record its presence by incrementing the appropriate
+&lt;span class=inline-code&gt;◂_&lt;/span&gt;), we record its presence by incrementing the appropriate
 counter and keep comparing the rest of the inclusion proofs.&lt;/p&gt;
 
 
@@ -1896,8 +2127,8 @@ one easily forgets to protect bound variables and end up treating
 them as if they were free.&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot2&quot; href=&quot;#reftop2&quot;&gt;[2]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;It &lt;i&gt;is&lt;/i&gt;
 respectively renaming / weakening provided that the function
 passed is well-behaved (resp. bijective / injective).&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot3&quot; href=&quot;#reftop3&quot;&gt;[3]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;It makes sense as
-a notion of inclusion because a proof that &lt;tt&gt;A ⊆ B&lt;/tt&gt; gives rise
-to a morphism from &lt;tt&gt;A&lt;/tt&gt; to &lt;tt&gt;B&lt;/tt&gt;. Cf.
+a notion of inclusion because a proof that &lt;span class=inline-code&gt;A ⊆ B&lt;/span&gt; gives rise
+to a morphism from &lt;span class=inline-code&gt;A&lt;/span&gt; to &lt;span class=inline-code&gt;B&lt;/span&gt;. Cf.
 &lt;a href=&quot;code/LazyLambda/LazyLambda.html#4861&quot;&gt;the accompanying Agda doc&lt;/a&gt;.&lt;/div&gt;&lt;/p&gt;&lt;/div&gt;</description><guid isPermaLink="true">http://blog.gallais.org/lazy-lambda.html</guid><pubDate>Mon, 28 Apr 2014 13:37:00 UTC</pubDate></item><item><title>Dimension-Aware Computations</title><link>http://blog.gallais.org/dimension-aware-computations.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Dimension-Aware Computations&lt;/h1&gt;&lt;div class=bdocs&gt;
 &lt;ul&gt;&lt;li&gt;&lt;a href=&quot;code/ToyingDimensions/dimensions.html&quot;&gt;Colored Agda&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;code/ToyingDimensions/Plot.hs&quot;&gt;Haskell Voodoo&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;
@@ -1969,9 +2200,9 @@ d * e = record { kilogram = kilogram d + kilogram e
 
 
 &lt;p&gt;We can now define the basic dimensions: kilograms, meters and seconds by
-assigning &lt;tt&gt;+ 0&lt;/tt&gt; to all the fields except for the one of interest
-which is instantiated with &lt;tt&gt;+ 1&lt;/tt&gt;. As an example, here is the dimension
-&lt;tt&gt;sec&lt;/tt&gt; corresponding to seconds.&lt;/p&gt;
+assigning &lt;span class=inline-code&gt;+ 0&lt;/span&gt; to all the fields except for the one of interest
+which is instantiated with &lt;span class=inline-code&gt;+ 1&lt;/span&gt;. As an example, here is the dimension
+&lt;span class=inline-code&gt;sec&lt;/span&gt; corresponding to seconds.&lt;/p&gt;
 
 
 
@@ -1986,11 +2217,11 @@ which is instantiated with &lt;tt&gt;+ 1&lt;/tt&gt;. As an example, here is the 
 
 
 &lt;p&gt;So far, so good. But in real life we quite like to consider other units than
-just the basic ones. A &lt;tt&gt;unit&lt;/tt&gt; of measure is therefore a dimension
-together with a non-zero coefficient. The type of &lt;tt&gt;hn&lt;/tt&gt; has been chosen
-so &lt;tt&gt;hn&lt;/tt&gt; can be inferred by the system in concrete cases (if &lt;tt&gt;n&lt;/tt&gt;
-is non-zero, then &lt;tt&gt;hn&lt;/tt&gt; is of type &lt;tt&gt;⊤&lt;/tt&gt; hence equal to &lt;tt&gt;tt&lt;/tt&gt;)
-and to match the requirements imposed by &lt;tt&gt;_div_&lt;/tt&gt; in the standard
+just the basic ones. A &lt;span class=inline-code&gt;unit&lt;/span&gt; of measure is therefore a dimension
+together with a non-zero coefficient. The type of &lt;span class=inline-code&gt;hn&lt;/span&gt; has been chosen
+so &lt;span class=inline-code&gt;hn&lt;/span&gt; can be inferred by the system in concrete cases (if &lt;span class=inline-code&gt;n&lt;/span&gt;
+is non-zero, then &lt;span class=inline-code&gt;hn&lt;/span&gt; is of type &lt;span class=inline-code&gt;⊤&lt;/span&gt; hence equal to &lt;span class=inline-code&gt;tt&lt;/span&gt;)
+and to match the requirements imposed by &lt;span class=inline-code&gt;_div_&lt;/span&gt; in the standard
 library.&lt;/p&gt;
 
 
@@ -2013,8 +2244,8 @@ non-zero) and the product of their respective dimensions.&lt;/p&gt;
 
 
 &lt;p&gt;It is quite natural to introduce the SI&#39;s prefixes as functions altering a
-previously defined unit. In our system, the types of &lt;tt&gt;milli&lt;/tt&gt;,
-&lt;tt&gt;centi&lt;/tt&gt; and &lt;tt&gt;deci&lt;/tt&gt; are nastier than the ones presented below
+previously defined unit. In our system, the types of &lt;span class=inline-code&gt;milli&lt;/span&gt;,
+&lt;span class=inline-code&gt;centi&lt;/span&gt; and &lt;span class=inline-code&gt;deci&lt;/span&gt; are nastier than the ones presented below
 because we are using natural numbers rather than rational ones and division
 of a non-zero number by a non-zero number can return zero.&lt;/p&gt;
 
@@ -2042,7 +2273,7 @@ min = 60 , _ # sec&lt;/p&gt;
 &lt;p&gt;Finally, values are just numerical values repackaged together with a unit.
 We choose here to have a data constructor forcing the user to explicitly
 mention the unit of measure to be attached to the value. It could be avoided
-given that &lt;tt&gt;d&lt;/tt&gt; is a parameter of the data-type but it is quite handy
+given that &lt;span class=inline-code&gt;d&lt;/span&gt; is a parameter of the data-type but it is quite handy
 for documentation purposes and on the fly definition of values.&lt;/p&gt;
 
 
@@ -2053,8 +2284,8 @@ for documentation purposes and on the fly definition of values.&lt;/p&gt;
 
 
 &lt;p&gt;Multiplying to value has to return something of the right dimension but the
-scaling factor can be arbitrary (we may multiply &lt;tt&gt;kilo&lt;/tt&gt; meters by hours
-and expect a result in &lt;tt&gt;m / s&lt;/tt&gt;). Hence the following implementation.
+scaling factor can be arbitrary (we may multiply &lt;span class=inline-code&gt;kilo&lt;/span&gt; meters by hours
+and expect a result in &lt;span class=inline-code&gt;m / s&lt;/span&gt;). Hence the following implementation.
 Addition and division behave similarly.&lt;/p&gt;
 
 
@@ -2070,7 +2301,7 @@ _*_ ⟨ vd ∶ ._ ⟩ ⟨ ve ∶ ._ ⟩ =
 it does not have the subformula property which will probably be problematic
 in large expression where the type of all the subexpressions is not inferrable.
 A simple solution is to specialize the return type down to
-&lt;tt&gt;\\[ 1 , _ # d * e ]&lt;/tt&gt; whilst introducing a lifting operation converting
+&lt;span class=inline-code&gt;\\[ 1 , _ # d * e ]&lt;/span&gt; whilst introducing a lifting operation converting
 from one type to an other.&lt;/p&gt;
 
 
@@ -2086,7 +2317,7 @@ from one type to an other.&lt;/p&gt;
 
 &lt;p&gt;This system tracking dimensions makes sure that we do not make mistakes
 when combining different values but it also converts between various units.
-For instance, the following expression normalizes to &lt;tt&gt;10&lt;/tt&gt;.&lt;/p&gt;
+For instance, the following expression normalizes to &lt;span class=inline-code&gt;10&lt;/span&gt;.&lt;/p&gt;
 
 
 
@@ -2101,8 +2332,8 @@ For instance, the following expression normalizes to &lt;tt&gt;10&lt;/tt&gt;.&lt
 
 &lt;p&gt;The setting of this simulation is pretty simple: we have a ball
 characterized by its position, speed and acceleration in a vertical plan.
-The gravitational constant &lt;tt&gt;g&lt;/tt&gt; corresponding to earth&#39;s attraction
-is expressed in &lt;tt&gt;m / (s * s)&lt;/tt&gt; and equal to &lt;tt&gt;10&lt;/tt&gt;.
+The gravitational constant &lt;span class=inline-code&gt;g&lt;/span&gt; corresponding to earth&#39;s attraction
+is expressed in &lt;span class=inline-code&gt;m / (s * s)&lt;/span&gt; and equal to &lt;span class=inline-code&gt;10&lt;/span&gt;.
 
 &lt;br /&gt;In order to simulate the free fall of this ball, we are going to apply
 Newton&#39;s approximation method: time is discretized and the characterization
@@ -2123,7 +2354,7 @@ newton dt p =
 
 
 &lt;p&gt;A simulation consists in applying repeatedly this newton transformation
-to an initial point. We define the &lt;tt&gt;throw&lt;/tt&gt; function doing exactly
+to an initial point. We define the &lt;span class=inline-code&gt;throw&lt;/span&gt; function doing exactly
 this and generating a trace of all the successive positions.&lt;/p&gt;
 
 
@@ -2153,13 +2384,13 @@ numbers to represent the coefficients. This would ensure that conversion
 ratios can be properly computed and make the work a lot more useful.
 It is no coincidence that my example involving a speed expressed in
 &lt;i&gt;distance per minutes&lt;/i&gt; precisely picks a distance which is a multiple of
-&lt;tt&gt;60&lt;/tt&gt;... I haven&#39;t had the internet connection, the time nor the
+&lt;span class=inline-code&gt;60&lt;/span&gt;... I haven&#39;t had the internet connection, the time nor the
 desire to see whether appropriate libraries already exist for Agda or to
 write my own ones.
 &lt;br /&gt;Similarly, the fact that the free fall is represented upside-down is a
 direct consequence of the values not being integers but rather natural
-numbers (once more due to a lack of libraries in Agda: &lt;tt&gt;div&lt;/tt&gt; and
-&lt;tt&gt;mod&lt;/tt&gt; are only available for ℕ in the standard library).&lt;/p&gt;
+numbers (once more due to a lack of libraries in Agda: &lt;span class=inline-code&gt;div&lt;/span&gt; and
+&lt;span class=inline-code&gt;mod&lt;/span&gt; are only available for ℕ in the standard library).&lt;/p&gt;
 
 
 
@@ -2291,7 +2522,7 @@ functions on semantical objects.&lt;/p&gt;
 
 
 &lt;p&gt;These definitions are easily extended to contexts by recursion
-and give rise to semantical environments &lt;tt&gt;Δ ⊩ε Γ&lt;/tt&gt;. A natural
+and give rise to semantical environments &lt;span class=inline-code&gt;Δ ⊩ε Γ&lt;/span&gt;. A natural
 notion of weakening can be made formal.&lt;/p&gt;
 
 
@@ -2313,7 +2544,7 @@ confine the uses of eta-expansion at reification time. This has to be
 compared to the motto &lt;i&gt;eta-expansion both at the syntactical and
 semantical level&lt;/i&gt; usually associated with the (un)quote functions.
 Additionally, this syntactic work is performed in a standalone
-function &lt;tt&gt;eta[_]_&lt;/tt&gt;
+function &lt;span class=inline-code&gt;eta[_]_&lt;/span&gt;
 &lt;a id=&quot;reftop3&quot; href=&quot;#refbot3&quot;&gt;[3]&lt;/a&gt; which
 is model agnostic.&lt;/p&gt;
 
@@ -2340,8 +2571,8 @@ average normalization by evaluation formalization.&lt;/p&gt;
 
 
 &lt;p&gt;By combining weakening for semantical environments and unquote,
-we can define a diagonal environment &lt;tt&gt;Γ ⊩ε Γ&lt;/tt&gt; for every
-&lt;tt&gt;Γ&lt;/tt&gt;. In order to be able to extract normal forms from
+we can define a diagonal environment &lt;span class=inline-code&gt;Γ ⊩ε Γ&lt;/span&gt; for every
+&lt;span class=inline-code&gt;Γ&lt;/span&gt;. In order to be able to extract normal forms from
 simple terms, it is thus enough to define an evaluation function.&lt;/p&gt;
 
 
@@ -2350,10 +2581,10 @@ simple terms, it is thus enough to define an evaluation function.&lt;/p&gt;
 
 
 
-&lt;p&gt;&lt;tt&gt;eval&lt;/tt&gt; is defined by induction on the structure of the term
-&lt;tt&gt;t&lt;/tt&gt;. In the variable case, a simple lookup in the semantical
+&lt;p&gt;&lt;span class=inline-code&gt;eval&lt;/span&gt; is defined by induction on the structure of the term
+&lt;span class=inline-code&gt;t&lt;/span&gt;. In the variable case, a simple lookup in the semantical
 environment produces the well-typed value needed. The application
-case combines the induction hypotheses using &lt;tt&gt;_$$_&lt;/tt&gt;, a
+case combines the induction hypotheses using &lt;span class=inline-code&gt;_$$_&lt;/span&gt;, a
 function defined by case analysis on the function: if the function
 is stuck, the application also is whereas if it is live, the action
 model will compute further using the argument.&lt;/p&gt;
@@ -2367,10 +2598,10 @@ inj₂ (f , F) $$ X = F (⊆-refl _) X&lt;/p&gt;
 
 
 &lt;p&gt;The lambda abstraction case is defined in two steps: first the
-object &lt;tt&gt;B&lt;/tt&gt; in the acting model can be generated by applying
+object &lt;span class=inline-code&gt;B&lt;/span&gt; in the acting model can be generated by applying
 the induction hypothesis for the body of the lambda in an extended
 (and weakened) environment. And then the normal form is generated
-by quoting the object obtained when applying &lt;tt&gt;B&lt;/tt&gt; to the
+by quoting the object obtained when applying &lt;span class=inline-code&gt;B&lt;/span&gt; to the
 variable bound by the head lambda.&lt;/p&gt;
 
 
@@ -2406,9 +2637,9 @@ computation and standardization in our case.&lt;/p&gt;
 &lt;h3&gt;Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;Intuitionistic model constructions and normalization
 proofs by Thierry Coquand and Peter Dybjer
 (&lt;a href=&quot;http://www.citeulike.org/user/gallais/article/8927583&quot;&gt;citeulike&lt;/a&gt;)&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot2&quot; href=&quot;#reftop2&quot;&gt;[2]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;&lt;a href=&quot;http://patch-tag.com/r/gallais/agda/snapshot/current/content/raw/src/nbe/stlc/whnf/model.agda&quot;&gt;Raw Agda&lt;/a&gt; development on patch-tag.&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot3&quot; href=&quot;#reftop3&quot;&gt;[3]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;It should be noted that the traditional eta-expansion trick
-(&lt;tt&gt;↑[ σ ] ↓[ σ ] t&lt;/tt&gt;) consisting of drowning the neutral term
+(&lt;span class=inline-code&gt;↑[ σ ] ↓[ σ ] t&lt;/span&gt;) consisting of drowning the neutral term
 in the model and refying it back immediately after is precisely
-equal to applying &lt;tt&gt;eta[ σ ]&lt;/tt&gt; to &lt;tt&gt;t&lt;/tt&gt;.&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot4&quot; href=&quot;#reftop4&quot;&gt;[4]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;A set of
+equal to applying &lt;span class=inline-code&gt;eta[ σ ]&lt;/span&gt; to &lt;span class=inline-code&gt;t&lt;/span&gt;.&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot4&quot; href=&quot;#reftop4&quot;&gt;[4]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;A set of
 rules reorganizing stuck recursive functions we introduce in our
 &lt;a href=&quot;/pdf/icfp13.pdf&quot;&gt;ICFP submission&lt;/a&gt; (This is starting to
 sound like an advertisement campaign... ¬_¬).&lt;/div&gt;&lt;/p&gt;&lt;/div&gt;</description><guid isPermaLink="true">http://blog.gallais.org/glueing-terms-models.html</guid><pubDate>Tue, 30 Apr 2013 13:37:00 UTC</pubDate></item><item><title>A universe for syntax with binding</title><link>http://blog.gallais.org/syntax-binding-run-omega.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;A universe for syntax with binding&lt;/h1&gt;&lt;div class=bdocs&gt;
@@ -2445,8 +2676,8 @@ in his paper on ornaments &lt;a id=&quot;reftop2&quot; href=&quot;#refbot2&quot;
 except for an extra constructor which allows us to introduce a new variable. It
 comes with a decoding function which, for this is the non dependent case, can be
 defined separately. We will however present each constructor together with its
-semantics given by the decoding function &lt;tt&gt;⟦_⟧&lt;/tt&gt; in the pure tradition of
-Induction-Recursion &lt;a id=&quot;reftop3&quot; href=&quot;#refbot3&quot;&gt;[3]&lt;/a&gt;. This decoding function defines an endofunctor on &lt;tt&gt;List V → Set&lt;/tt&gt;.&lt;/p&gt;
+semantics given by the decoding function &lt;span class=inline-code&gt;⟦_⟧&lt;/span&gt; in the pure tradition of
+Induction-Recursion &lt;a id=&quot;reftop3&quot; href=&quot;#refbot3&quot;&gt;[3]&lt;/a&gt;. This decoding function defines an endofunctor on &lt;span class=inline-code&gt;List V → Set&lt;/span&gt;.&lt;/p&gt;
 
 
 
@@ -2457,7 +2688,7 @@ Induction-Recursion &lt;a id=&quot;reftop3&quot; href=&quot;#refbot3&quot;&gt;[3
 
 &lt;p&gt;Sigma types can either be used in a non-dependent fashion in order to store
 elements of a set inside the structure of the datatype e.g. when defining lists;
-or to give the user a set (indexed by &lt;tt&gt;A&lt;/tt&gt; of different constructors she may
+or to give the user a set (indexed by &lt;span class=inline-code&gt;A&lt;/span&gt; of different constructors she may
 use.&lt;/p&gt;
 
 
@@ -2468,8 +2699,8 @@ use.&lt;/p&gt;
 
 
 &lt;p&gt;Recursive positions are the variable positions in the functor and are therefore
-interpreted by &lt;tt&gt;R&lt;/tt&gt; which will be the fixpoint itself when tying the knot.
-They correspond to e.g. the tail of the list in the description of the &lt;tt&gt;_∷_&lt;/tt&gt;
+interpreted by &lt;span class=inline-code&gt;R&lt;/span&gt; which will be the fixpoint itself when tying the knot.
+They correspond to e.g. the tail of the list in the description of the &lt;span class=inline-code&gt;_∷_&lt;/span&gt;
 constructor.&lt;/p&gt;
 
 
@@ -2543,9 +2774,9 @@ are strictly positive by construction and accordingly have a fixpoint.&lt;/p&gt;
 
 
 
-&lt;p&gt;We call substitution for &lt;tt&gt;d&lt;/tt&gt; from &lt;tt&gt;Γ&lt;/tt&gt; to &lt;tt&gt;Δ&lt;/tt&gt;, a function
-which provides for each variable in &lt;tt&gt;Γ&lt;/tt&gt; a term of type &lt;tt&gt;`μ d&lt;/tt&gt;
-using variables taken in &lt;tt&gt;Δ&lt;/tt&gt;.&lt;/p&gt;
+&lt;p&gt;We call substitution for &lt;span class=inline-code&gt;d&lt;/span&gt; from &lt;span class=inline-code&gt;Γ&lt;/span&gt; to &lt;span class=inline-code&gt;Δ&lt;/span&gt;, a function
+which provides for each variable in &lt;span class=inline-code&gt;Γ&lt;/span&gt; a term of type &lt;span class=inline-code&gt;`μ d&lt;/span&gt;
+using variables taken in &lt;span class=inline-code&gt;Δ&lt;/span&gt;.&lt;/p&gt;
 
 
 
@@ -2555,9 +2786,9 @@ subst[ d ] Γ Δ = ∀ v → v ∈ Γ → `μ d Δ&lt;/p&gt;
 
 
 &lt;p&gt;As one would expect from the name of this function, given a substitution for
-&lt;tt&gt;d&lt;/tt&gt; from &lt;tt&gt;Γ&lt;/tt&gt; to &lt;tt&gt;Δ&lt;/tt&gt; and a term in &lt;tt&gt;`μ d&lt;/tt&gt; with free
-variables ranging in &lt;tt&gt;Γ&lt;/tt&gt;, one can build a term in &lt;tt&gt;`μ d&lt;/tt&gt; only using
-variables in &lt;tt&gt;Δ&lt;/tt&gt;. The whole process corresponds to applying this substitution
+&lt;span class=inline-code&gt;d&lt;/span&gt; from &lt;span class=inline-code&gt;Γ&lt;/span&gt; to &lt;span class=inline-code&gt;Δ&lt;/span&gt; and a term in &lt;span class=inline-code&gt;`μ d&lt;/span&gt; with free
+variables ranging in &lt;span class=inline-code&gt;Γ&lt;/span&gt;, one can build a term in &lt;span class=inline-code&gt;`μ d&lt;/span&gt; only using
+variables in &lt;span class=inline-code&gt;Δ&lt;/span&gt;. The whole process corresponds to applying this substitution
 and is defined by two mutually defined functions.
 &lt;br /&gt;A term is either a variable, in which case we can just apply the substitution,
 or it is an inhabitant of the functor applied to the fixpoint and we rely on the
@@ -2578,7 +2809,7 @@ where we go under a binder. In this case, we extend the substitution with the
 identity on the first variable and weaken the terms corresponding to the other
 ones. The careful reader will notice the generalization applied to the type of
 the recursive positions to ensure that the definition goes through. In practice,
-all direct calls to &lt;tt&gt;map⟦_⟧&lt;/tt&gt; will be such that &lt;tt&gt;d = e&lt;/tt&gt;.&lt;/p&gt;
+all direct calls to &lt;span class=inline-code&gt;map⟦_⟧&lt;/span&gt; will be such that &lt;span class=inline-code&gt;d = e&lt;/span&gt;.&lt;/p&gt;
 
 
 
@@ -2611,13 +2842,13 @@ it is rather easy to define what&#39;s named β reduction in the lambda calculus
 
 &lt;p&gt;When building examples, we introduce enumerations of labels corresponding to
 the different constructors of the language. We hope the definitions of the various
-&lt;tt&gt;Desc&lt;/tt&gt; functors to be easier to understand this way.
+&lt;span class=inline-code&gt;Desc&lt;/span&gt; functors to be easier to understand this way.
 &lt;br /&gt;Let&#39;s start with a very simple language: the untyped lambda calculus. Its
 grammar has two components: one can introduce a lambda abstraction (label
-&lt;tt&gt;lam&lt;/tt&gt;) which binds a variable and contains a subterm (a recursive position
-&lt;tt&gt;`r&lt;/tt&gt;) or an applications (label &lt;tt&gt;app&lt;/tt&gt;) which contains two subterms.
-The set of lambda terms with variables in &lt;tt&gt;Γ&lt;/tt&gt; is then given by &lt;tt&gt;`μ&lt;/tt&gt;.
-The set of closed terms is therefore &lt;tt&gt;lc []&lt;/tt&gt;&lt;/p&gt;
+&lt;span class=inline-code&gt;lam&lt;/span&gt;) which binds a variable and contains a subterm (a recursive position
+&lt;span class=inline-code&gt;`r&lt;/span&gt;) or an applications (label &lt;span class=inline-code&gt;app&lt;/span&gt;) which contains two subterms.
+The set of lambda terms with variables in &lt;span class=inline-code&gt;Γ&lt;/span&gt; is then given by &lt;span class=inline-code&gt;`μ&lt;/span&gt;.
+The set of closed terms is therefore &lt;span class=inline-code&gt;lc []&lt;/span&gt;&lt;/p&gt;
 
 
 
@@ -2633,8 +2864,8 @@ lc Γ = `μ lc-grammar Γ&lt;/p&gt;
 
 &lt;p&gt;Using Andjelkovic and Gundry&#39;s pattern synonyms &lt;a id=&quot;reftop4&quot; href=&quot;#refbot4&quot;&gt;[4]&lt;/a&gt;, we can recover a nice syntax closer to the one we are
 used to. Our lambdas, variables and applications will desugar to the somewhat
-horrendous codes describing elements of the fixpoint of &lt;tt&gt;lc-grammar&lt;/tt&gt;.
-We can, for instance, define the well-known looping function &lt;tt&gt;:Ω&lt;/tt&gt;.&lt;/p&gt;
+horrendous codes describing elements of the fixpoint of &lt;span class=inline-code&gt;lc-grammar&lt;/span&gt;.
+We can, for instance, define the well-known looping function &lt;span class=inline-code&gt;:Ω&lt;/span&gt;.&lt;/p&gt;
 
 
 
@@ -2644,16 +2875,16 @@ We can, for instance, define the well-known looping function &lt;tt&gt;:Ω&lt;/t
 
 
 
-&lt;p&gt;We can now define a function &lt;tt&gt;fire : lc [] → Maybe (lc [])&lt;/tt&gt; which explores
+&lt;p&gt;We can now define a function &lt;span class=inline-code&gt;fire : lc [] → Maybe (lc [])&lt;/span&gt; which explores
 a (closed) term looking for a redex and returns either nothing if the term is in
 weak-head normal form or just the term after having fired the first redex encountered.
-Iterating &lt;tt&gt;fire&lt;/tt&gt; on a term gives rise to an &lt;tt&gt;execute&lt;/tt&gt; function
-which produces a &lt;tt&gt;CoList&lt;/tt&gt; of successive reducts.&lt;/p&gt;
+Iterating &lt;span class=inline-code&gt;fire&lt;/span&gt; on a term gives rise to an &lt;span class=inline-code&gt;execute&lt;/span&gt; function
+which produces a &lt;span class=inline-code&gt;CoList&lt;/span&gt; of successive reducts.&lt;/p&gt;
 
 
 
-&lt;p&gt;As one would expect, running &lt;tt&gt;:Ω&lt;/tt&gt; yields an infinitely long &lt;tt&gt;CoList&lt;/tt&gt;
-of &lt;tt&gt;:Ω&lt;/tt&gt;s.&lt;/p&gt;
+&lt;p&gt;As one would expect, running &lt;span class=inline-code&gt;:Ω&lt;/span&gt; yields an infinitely long &lt;span class=inline-code&gt;CoList&lt;/span&gt;
+of &lt;span class=inline-code&gt;:Ω&lt;/span&gt;s.&lt;/p&gt;
 
 
 
@@ -2668,7 +2899,7 @@ lemma = ∷ ♯ lemma&lt;/p&gt;
 
 &lt;p&gt;I cooked up the &lt;a href=&quot;http://patch-tag.com/r/gallais/agda/snapshot/current/content/raw/src/generic/indexed.agda&quot;&gt;indexed version&lt;/a&gt;
 with which it is possible to get sexy well-typed terms for the simply-typed lambda
-calculus such as &lt;tt&gt;`K&lt;/tt&gt;. But that is another story.&lt;/p&gt;
+calculus such as &lt;span class=inline-code&gt;`K&lt;/span&gt;. But that is another story.&lt;/p&gt;
 
 
 
