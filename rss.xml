@@ -161,7 +161,7 @@ showXMLs :: XML -&gt; [Doc]
 ...
 showXMLs (Elt n a c)  = [text &quot;&lt;&quot; &lt;&gt; showTag n a &lt;&gt; text &quot;&gt;&quot; &lt;&gt;
                         showFill showXMLs c &lt;&gt;
-                        text &quot;&lt;/&quot; &lt;&gt; text n &lt;&gt; text &quot;&gt;&quot;]
+                        text &quot;&amp;lt;/&quot; &lt;&gt; text n &lt;&gt; text &quot;&gt;&quot;]
 ...&lt;/p&gt;
 
 
