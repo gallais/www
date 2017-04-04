@@ -23,7 +23,7 @@
     <div id="container">
 
       <span style="float:right"><a href="../rss.xml"><img src="../img/rss.png" /></a></span><h1>Resource Aware Contexts and Proof Search for ILL</h1><div class="bdocs"><ul><li><a href="https://github.com/gallais/proof-search-ILLWiL">Github repository</a></li>
-<li><a href="http://gallais.github.io/proof-search-ILLWiL/">Papers & coloured Agda</a></li></ul></div>
+<li><a href="http://gallais.github.io/proof-search-ILLWiL/">Papers &amp; coloured Agda</a></li></ul></div>
 
 
 <p id="chapo">Type theory is expressive enough that one can implement
@@ -49,7 +49,7 @@ tractable.</p>
 <p>Before starting, I would like to point out that Liam O'Connor wrote
 a <a href="http://liamoc.net/posts/2014-01-01-context-split.html">very nice
 blog post</a> showcasing the usual ℕ-index definition of untyped
-lambda terms as well as introducing an elegant syntax for "linear"
+lambda terms as well as introducing an elegant syntax for &quot;linear&quot;
 <a id="reftop1" href="#refbot1">[1]</a> proof terms <a id="reftop2" href="#refbot2">[2]</a>. It has the same underlying idea:
 massaging the original definitions can lead to a calculus more suited
 for a mechanised approach.</p>
@@ -98,7 +98,7 @@ the office and presenting ideas about type theories with
 <a href="https://pigworker.wordpress.com/2014/12/31/worlds/">world annotations</a>.
 One of his ideas was that typing a term might impact the context (e.g.
 by changing the world an assumption lives in) which implies automatically
-that one needs both an "input" as well as an "output" context in the
+that one needs both an &quot;input&quot; as well as an &quot;output&quot; context in the
 typing relation. We end up with something like that:</p>
 
 
@@ -126,8 +126,8 @@ new sequent calculus generalising linear logic:</p>
 
 
 <p class="code">  Γ ∋ k ∈ Δ              Γ ⊢ σ ⊣ Δ    Δ ⊢ τ ⊣ E               Γ ⊢ σ ⊣ Δ₁    Γ ⊢ τ ⊣ Δ₂    E ≡ Δ₁ ⊙ Δ₂
------------- κ          ------------------------ ⊗           ----------------------------------------- &
-Γ ⊢ `κ k ⊣ Δ                 Γ ⊢ σ `⊗ τ ⊣ E                               Γ ⊢ σ `& τ ⊣ E</p>
+------------ κ          ------------------------ ⊗           ----------------------------------------- &amp;
+Γ ⊢ `κ k ⊣ Δ                 Γ ⊢ σ `⊗ τ ⊣ E                               Γ ⊢ σ `&amp; τ ⊣ E</p>
 
 
 
@@ -189,9 +189,9 @@ differences is also defined in a pointwise manner and we can prove that
 
 <p>The last unresolved problem is the way we are going to deal with
 left rules. The left rule for par is a direct loss of information:
-we move from having <span class="inline-code">A & B</span> as an assumption to either one
+we move from having <span class="inline-code">A &amp; B</span> as an assumption to either one
 of the subformula. If the goal we are trying to prove is
-<span class="inline-code">B & A</span> then applying a left rule too early will lead us to
+<span class="inline-code">B &amp; A</span> then applying a left rule too early will lead us to
 a dead end. The one for tensor is typically needed before using a
 right introduction rule for tensor itself: the two subformulas of
 the assumptions may be used in different subproofs e.g. when proving

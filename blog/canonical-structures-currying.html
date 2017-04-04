@@ -22,7 +22,7 @@
     </div>
     <div id="container">
 
-      <span style="float:right"><a href="../rss.xml"><img src="../img/rss.png" /></a></span><h1>Currying using Canonical Structures</h1><div class="bdocs"><ul><li><a href="https://hal.inria.fr/hal-00816703">Mahboubi & Tassi's paper</a></li>
+      <span style="float:right"><a href="../rss.xml"><img src="../img/rss.png" /></a></span><h1>Currying using Canonical Structures</h1><div class="bdocs"><ul><li><a href="https://hal.inria.fr/hal-00816703">Mahboubi &amp; Tassi's paper</a></li>
 <li><a href="https://gist.github.com/gallais/d3dae1f7d5fe9e9d5ab5">Universe for Currying</a></li>
 <li><a href="https://gist.github.com/gallais/8923120a41396bb21615">Canonical Structures for Currying</a></li></ul></div>
 
@@ -73,14 +73,14 @@ introduction <a href="https://hal.inria.fr/hal-00816703">Canonical Structures
 for the working Coq user</a>. We start by defining a module which
 contains first and foremost a Record <span class="inline-code">class</span> indexed by a domain
 <span class="inline-code">Dom</span> and a type constructor <span class="inline-code">Curr</span> such that <span class="inline-code">Curr a</span>
-is a curried version of the function space <span class="inline-code">Dom -> a</span> as witnessed
+is a curried version of the function space <span class="inline-code">Dom -&gt; a</span> as witnessed
 by the <span class="inline-code">Fun</span> stored in the record.</p>
 
 
 
 <p class="code">Module Currying.
-  Record class (Dom : Type) (Curr : Type -> Type) :=
-         Class { Fun : forall cod, Curr cod -> (Dom -> cod) }.
+  Record class (Dom : Type) (Curr : Type -&gt; Type) :=
+         Class { Fun : forall cod, Curr cod -&gt; (Dom -&gt; cod) }.
 </p>
 
 
@@ -92,7 +92,7 @@ that they are related.</p>
 
 
 <p class="code">  Structure type := Pack { dom      : Type
-                         ; curr     : Type -> Type
+                         ; curr     : Type -&gt; Type
                          ; class_of : class dom curr }.
 </p>
 
@@ -109,9 +109,9 @@ we are defining a special version of <span class="inline-code">map</span> on <sp
 
 
 <p class="code">  Definition flippedmap (Curry : type) :
-    forall cod, list (dom Curry) -> curr Curry cod -> list cod.
+    forall cod, list (dom Curry) -&gt; curr Curry cod -&gt; list cod.
     refine (let 'Pack _ _ (Class fc) := Curry
-            in fun cod xs f => List.map _ xs) ; apply fc, f.
+            in fun cod xs f =&gt; List.map _ xs) ; apply fc, f.
   Defined.
 </p>
 
@@ -133,7 +133,7 @@ into scope.</p>
 
 
 <p class="code">  Module theory.
-  Notation "f <$> xs" := (flippedmap xs f) (at level 70).
+  Notation &quot;f &lt;$&gt; xs&quot; := (flippedmap xs f) (at level 70).
   End theory.
 End Currying.
 
@@ -148,14 +148,14 @@ Import Currying.theory.</p>
 <p>Now that our interface has been defined, it is time to populate it
 with canonical instances. The first one simply states that given two
 domains we know how to curry, we can explain how to curry their product.
-The nesting <span class="inline-code">fun cod => Currying.curr c1 (Currying.curr c2 cod)</span>
+The nesting <span class="inline-code">fun cod =&gt; Currying.curr c1 (Currying.curr c2 cod)</span>
 is chosen so that arguments are kept in the right order.</p>
 
 
 
 <p class="code">Definition pair_curry (c1 c2 : Currying.type) :
-           forall cod, Currying.curr c1 (Currying.curr c2 cod) ->
-                       (Currying.dom c1 * Currying.dom c2) -> cod.
+           forall cod, Currying.curr c1 (Currying.curr c2 cod) -&gt;
+                       (Currying.dom c1 * Currying.dom c2) -&gt; cod.
   intros cod f (a, b).
   apply c2 ; [| exact b].
   apply c1 ; [| exact a].
@@ -164,7 +164,7 @@ Defined.
 
 Canonical Structure CurryingPair (c1 : Currying.type) (c2 : Currying.type) : Currying.type :=
   Currying.Pack (Currying.dom c1 * Currying.dom c2)
-                (fun cod => Currying.curr c1 (Currying.curr c2 cod))
+                (fun cod =&gt; Currying.curr c1 (Currying.curr c2 cod))
                 (Currying.Class (pair_curry c1 c2)).
 </p>
 
@@ -180,7 +180,7 @@ a defaulting instance which does not do anything as witnessed by its
 
 
 <p class="code">Canonical Structure failsafe (a : Type) : Currying.type :=
-  Currying.Pack a (fun cod => a -> cod) (Currying.Class (fun _ f => f)).</p>
+  Currying.Pack a (fun cod =&gt; a -&gt; cod) (Currying.Class (fun _ f =&gt; f)).</p>
 
 
 
@@ -195,9 +195,9 @@ functions <span class="inline-code">List.map_pair</span>, <span class="inline-co
 
 
 
-<p class="code">Definition map_pair {A B C} (f : A -> B -> C) (l : list (A * B)) : list C := f <$> l.
-Definition map_triple {A B C D} (f : A -> B -> C -> D) (l : list (A * B * C)) : list D := f <$> l.
-Definition map_quad {A B C D E} (f : A -> B -> C -> D -> E) (l : list (A * B * C * D)) : list E := f <$> l.</p>
+<p class="code">Definition map_pair {A B C} (f : A -&gt; B -&gt; C) (l : list (A * B)) : list C := f &lt;$&gt; l.
+Definition map_triple {A B C D} (f : A -&gt; B -&gt; C -&gt; D) (l : list (A * B * C)) : list D := f &lt;$&gt; l.
+Definition map_quad {A B C D E} (f : A -&gt; B -&gt; C -&gt; D -&gt; E) (l : list (A * B * C * D)) : list E := f &lt;$&gt; l.</p>
 
 
 
@@ -205,7 +205,7 @@ Definition map_quad {A B C D E} (f : A -> B -> C -> D -> E) (l : list (A * B * C
 
 
 
-<p class="code">Definition map_nestedpairs {A B C D E} (f : A -> B -> C -> D -> E) (l : list ((A * B) * (C * D))) : list E := f <$> l.
+<p class="code">Definition map_nestedpairs {A B C D E} (f : A -&gt; B -&gt; C -&gt; D -&gt; E) (l : list ((A * B) * (C * D))) : list E := f &lt;$&gt; l.
 </p>
 
 

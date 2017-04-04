@@ -28,7 +28,7 @@
 
 
 <p id="chapo">Two weeks ago I spent some time implementing Wadler's
-"Prettier Printer". The implementation is fairly straightforward
+&quot;Prettier Printer&quot;. The implementation is fairly straightforward
 except for three functions that are not seen as terminating. Here
 are the three tricks that made them go through.</p>
 
@@ -59,10 +59,10 @@ been inserted.</p>
 
 
 
-<p class="code">fill :: [Doc] -> Doc
+<p class="code">fill :: [Doc] -&gt; Doc
 ...
-fill (x:y:zs) = (flatten x <+> fill (flatten y : zs))
-                :<|>
+fill (x:y:zs) = (flatten x &lt;+&gt; fill (flatten y : zs))
+                :&lt;|&gt;
                 (x &lt;/&gt; fill (y : zs))
 </p>
 
@@ -71,8 +71,8 @@ fill (x:y:zs) = (flatten x <+> fill (flatten y : zs))
 <p>The issue here is that <span class="inline-code">flatten y : zs</span> is
 not a subterm of <span class="inline-code">x:y:zs</span> which makes the
 recursive call to <span class="inline-code">fill</span> look illegal. The
-right notion of smaller here is not "strict subterm" but rather
-"smaller length". This can be fixed by simply changing the type of
+right notion of smaller here is not &quot;strict subterm&quot; but rather
+&quot;smaller length&quot;. This can be fixed by simply changing the type of
 the function to <span class="inline-code">∀ {n} → Vec Doc n → Doc</span> thus
 making the termination obviously structural: if the length of
 <span class="inline-code">x:y:zs</span> is <span class="inline-code">suc (suc n)</span>
@@ -112,10 +112,10 @@ the issue:</p>
 
 
 
-<p class="code">be :: Int -> Int -> [(Int, Doc)] -> Doc
+<p class="code">be :: Int -&gt; Int -&gt; [(Int, Doc)] -&gt; Doc
 ...
 be w k ((i,NIL):z)     = be w k z
-be w k ((i,x :<> y):z) = be w k ((i,x):(i,y):z)
+be w k ((i,x :&lt;&gt; y):z) = be w k ((i,x):(i,y):z)
 ...
 </p>
 
@@ -129,7 +129,7 @@ slightly change the type of the function: rather than working
 with a stack of <span class="inline-code">(Int, Doc)</span> and
 inspecting its head, we work with a focused
 <span class="inline-code">Int</span> and <span class="inline-code">Doc</span>
-and a continuation <span class="inline-code">Int -> Doc</span> which,
+and a continuation <span class="inline-code">Int -&gt; Doc</span> which,
 provided a number of characters already inserted on the current
 line will yield the document corresponding to the rest of the
 computation. The two lines we saw earlier on have now become
@@ -140,7 +140,7 @@ computation. The two lines we saw earlier on have now become
 <p class="code">be : ℕ → ℕ → ℕ → Doc → (ℕ → Doc) → Doc
 ...
 be w k i NIL       ds = ds k
-be w k i (d :<> e) ds = be w k i d $ λ k → be w k i e ds
+be w k i (d :&lt;&gt; e) ds = be w k i d $ λ k → be w k i e ds
 ...
 </p>
 
@@ -177,15 +177,15 @@ which Agda has issues seeing as terminating:</p>
 
 
 
-<p class="code">showFill :: (a -> [Doc]) -> [a] -> Doc
+<p class="code">showFill :: (a -&gt; [Doc]) -&gt; [a] -&gt; Doc
 showFill f [] = nil
-showFill f xs = bracket "" (fill (concat (map f xs))) ""
+showFill f xs = bracket &quot;&quot; (fill (concat (map f xs))) &quot;&quot;
 
-showXMLs :: XML -> [Doc]
+showXMLs :: XML -&gt; [Doc]
 ...
-showXMLs (Elt n a c)  = [text "<" <> showTag n a <> text ">" <>
-                        showFill showXMLs c <>
-                        text "&lt;/" <> text n <> text ">"]
+showXMLs (Elt n a c)  = [text &quot;&lt;&quot; &lt;&gt; showTag n a &lt;&gt; text &quot;&gt;&quot; &lt;&gt;
+                        showFill showXMLs c &lt;&gt;
+                        text &quot;&lt;/&quot; &lt;&gt; text n &lt;&gt; text &quot;&gt;&quot;]
 ...</p>
 
 

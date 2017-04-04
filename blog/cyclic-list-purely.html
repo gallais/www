@@ -23,7 +23,7 @@
     <div id="container">
 
       <span style="float:right"><a href="../rss.xml"><img src="../img/rss.png" /></a></span><h1>Cyclic Lists, Purely</h1><div class="bdocs"><ul><li><a href="https://github.com/gallais/potpourri/blob/master/haskell/cyclic/CyclicList.hs">Haskell code</a></li>
-<li><a href="http://www.citeulike.org/user/gallais/article/1244296">Fegaras & Sheard</a></li>
+<li><a href="http://www.citeulike.org/user/gallais/article/1244296">Fegaras &amp; Sheard</a></li>
 <li><a href="http://www.citeulike.org/user/gallais/article/8246712">Ghani et al.</a></li></ul></div>
 
 
@@ -35,7 +35,7 @@ by using a function space to represent the loop in favour of
 (type-level) de Bruijn levels. I wanted to see how far one can go
 with the more extensional approach whilst retaining good properties
 (canonical forms, productivity, etc.). It turns out that the answer
-is: "quite far, really".</p>
+is: &quot;quite far, really&quot;.</p>
 
 
 
@@ -65,7 +65,7 @@ that all cycles are productive.</p>
 
 <p class="code">data CList a = CNil
              | Cons a (CList a)
-             | CRec a (CList a -> CList a)</p>
+             | CRec a (CList a -&gt; CList a)</p>
 
 
 
@@ -77,7 +77,7 @@ of streams quite easy: one just needs to feed the function stored in
 
 
 
-<p class="code">toStream :: CList a -> [a]
+<p class="code">toStream :: CList a -&gt; [a]
 toStream CNil          = []
 toStream (Cons x xs)   = x : toStream xs
 toStream xs@(CRec x r) = x : toStream (r xs)</p>
@@ -150,7 +150,7 @@ with a <span class="inline-code">CList b</span> element but <span class="inline-
 
 
 
-<p class="code">cmap :: (a -> b) -> CList a -> CList b
+<p class="code">cmap :: (a -&gt; b) -&gt; CList a -&gt; CList b
 cmap f CNil          = CNil
 cmap f (Cons x xs)   = Cons (f x) $ cmap f xs
 <span class="bad">cmap f xs@(CRec x r) = Cons (f x) $ cmap f (r xs)</span></p>
@@ -182,8 +182,8 @@ constructor are only ever used in the way they were meant to.</p>
 
 <p class="code">data CList a b where
   CNil :: CList a Closed
-  Cons :: a -> CList a b -> CList a b
-  CRec :: a -> (forall b. CList a b -> CList a b) -> CList a Closed</p>
+  Cons :: a -&gt; CList a b -&gt; CList a b
+  CRec :: a -&gt; (forall b. CList a b -&gt; CList a b) -&gt; CList a Closed</p>
 
 
 
@@ -212,12 +212,12 @@ write on that topic:</p>
 
 
 
-<p class="quote"> "Although cycles are explicit in this representation,
+<p class="quote"> &quot;Although cycles are explicit in this representation,
 almost all functions manipulating cyclic structures will need to
 unwind the cycles (based on the intuition that Rec means fix). The
 reason is that, although, we can recognize cycles as structures of
 the form Rec f, the argument f is a function and we cannot analyze
-functions well".</p>
+functions well&quot;.</p>
 
 
 
@@ -245,11 +245,11 @@ auxiliary function.</p>
 
 
 
-<p class="code">cfold :: forall a (b :: * -> *).
-         (forall ph. a -> b ph -> b ph) ->
-         b Closed ->
-         (a -> (forall ph. b ph -> b ph) -> b Closed) ->
-         List a -> b Closed
+<p class="code">cfold :: forall a (b :: * -&gt; *).
+         (forall ph. a -&gt; b ph -&gt; b ph) -&gt;
+         b Closed -&gt;
+         (a -&gt; (forall ph. b ph -&gt; b ph) -&gt; b Closed) -&gt;
+         List a -&gt; b Closed
 cfold c n r = goCRec</p>
 
 
@@ -262,7 +262,7 @@ of the work to <span class="inline-code">stopCRec</span>.</p>
 
 
 
-<p class="code">goCRec :: forall ph. CList a ph -> b ph
+<p class="code">goCRec :: forall ph. CList a ph -&gt; b ph
 goCRec CNil          = n
 goCRec (Cons x xs)   = c x $ goCRec xs
 goCRec xs@(CRec x p) = r x $ stopCRec (p xs)</p>
@@ -279,7 +279,7 @@ another time.</p>
 
 
 
-<p class="code">stopCRec :: CList a Closed -> forall ph. b ph -> b ph
+<p class="code">stopCRec :: CList a Closed -&gt; forall ph. b ph -&gt; b ph
 stopCRec (Cons x xs) ih = c x $ stopCRec xs ih
 stopCRec (CRec _ _)  ih = ih</p>
 
@@ -291,7 +291,7 @@ identical to the one we started with.</p>
 
 
 
-<p class="code">cmap :: forall a b. (a -> b) -> List a -> List b
+<p class="code">cmap :: forall a b. (a -&gt; b) -&gt; List a -&gt; List b
 cmap f = cfold (Cons . f) CNil (CRec . f)</p>
 
 
@@ -310,8 +310,8 @@ type:</p>
 
 
 
-<p class="code">cfoldRec :: forall a b. (a -> b -> b) -> b ->
-            (a -> (b -> b) -> b) -> List a -> b</p>
+<p class="code">cfoldRec :: forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt;
+            (a -&gt; (b -&gt; b) -&gt; b) -&gt; List a -&gt; b</p>
 
 
 
@@ -319,28 +319,28 @@ type:</p>
 of the <span class="inline-code">Show</span> instance for <span class="inline-code">List a</span> which allows us
 to display a finite string representing the cyclic structure in its
 entirety. When we encounter the pointer declaration, we output
-"rec X. " and keep showing the rest of the list but when the pointer
-is used, we simply output "X" and stop.</p>
+&quot;rec X. &quot; and keep showing the rest of the list but when the pointer
+is used, we simply output &quot;X&quot; and stop.</p>
 
 
 
-<p class="code">instance Show a => Show (List a) where
-  show = cfoldRec (\ x -> (++) (show x ++ " : ")) "[]"
-                  (\ x ih -> "rec X. " ++ show x ++ " : " ++ ih "X")</p>
+<p class="code">instance Show a =&gt; Show (List a) where
+  show = cfoldRec (\ x -&gt; (++) (show x ++ &quot; : &quot;)) &quot;[]&quot;
+                  (\ x ih -&gt; &quot;rec X. &quot; ++ show x ++ &quot; : &quot; ++ ih &quot;X&quot;)</p>
 
 
 
 <p>And, as we expected, <span class="inline-code">show $ CRec 1 (Cons 2)</span> now reduces
-to the finite string <span class="inline-code">"rec X. 1 : 2 : X"</span>. It is also possible
+to the finite string <span class="inline-code">&quot;rec X. 1 : 2 : X&quot;</span>. It is also possible
 to recover a <span class="inline-code">fold</span>-style function unwinding the cycle by
 tying the knot in the third argument: the induction hypothesis
 will just be the whole subcomputation itself!</p>
 
 
 
-<p class="code">cfold' :: forall a b. (a -> b -> b) -> b -> List a -> b
+<p class="code">cfold' :: forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; List a -&gt; b
 cfold' c n = cfoldRec c n r
-  where r :: a -> (b -> b) -> b
+  where r :: a -&gt; (b -&gt; b) -&gt; b
         <span class="bad">r a ih</span> = c a (ih $ <span class="bad">r a ih</span>)</p>
 
 
@@ -351,7 +351,7 @@ definition:</p>
 
 
 
-<p class="code">toStream :: List a -> [ a ]
+<p class="code">toStream :: List a -&gt; [ a ]
 toStream = cfold' (:) []</p>
 
 
