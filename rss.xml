@@ -20,7 +20,7 @@ once the maximum width of the final document is known.&lt;/p&gt;
 
 
 
-&lt;h3&gt;Using Vec rather than List&lt;/h3&gt;
+&lt;a name=&quot;UsingVecRatherThanList&quot; /&gt;&lt;h3&gt;Using Vec rather than List&lt;/h3&gt;
 
 
 
@@ -65,7 +65,7 @@ replacement for it with &lt;span class=inline-code&gt;Data.Vec.fromList&lt;/span
 
 
 
-&lt;h3&gt;CPS-transform algorithms using queues to store future work&lt;/h3&gt;
+&lt;a name=&quot;CPS-transformAlgorithmsUsingQueuesToStoreFutureWork&quot; /&gt;&lt;h3&gt;CPS-transform algorithms using queues to store future work&lt;/h3&gt;
 
 
 
@@ -130,7 +130,7 @@ list to collect all the leaves.&lt;/p&gt;
 
 
 
-&lt;h3&gt;Use sized-types to make higher-order functions usable&lt;/h3&gt;
+&lt;a name=&quot;UseSized-typesToMakeHigher-orderFunctionsUsable&quot; /&gt;&lt;h3&gt;Use sized-types to make higher-order functions usable&lt;/h3&gt;
 
 
 
@@ -208,7 +208,7 @@ occurence passed to &lt;span class=inline-code&gt;showFill&lt;/span&gt;, it has 
 
 
 
-&lt;h3&gt;Conclusion&lt;/h3&gt;
+&lt;a name=&quot;Conclusion&quot; /&gt;&lt;h3&gt;Conclusion&lt;/h3&gt;
 
 
 
@@ -242,7 +242,7 @@ used to tidy up some definitions.&lt;/p&gt;
 
 
 
-&lt;h3&gt;Introduction: Scope and lambda lifting&lt;/h3&gt;
+&lt;a name=&quot;Introduction:ScopeAndLambdaLifting&quot; /&gt;&lt;h3&gt;Introduction: Scope and lambda lifting&lt;/h3&gt;
 
 
 
@@ -295,7 +295,7 @@ check = indeed
 
 
 
-&lt;h3&gt;A more complex example&lt;/h3&gt;
+&lt;a name=&quot;AMoreComplexExample&quot; /&gt;&lt;h3&gt;A more complex example&lt;/h3&gt;
 
 
 
@@ -438,6 +438,7 @@ and so on with all the possible nestings imaginable.&lt;/p&gt;
 
 
 
+&lt;a name=&quot;0&quot; /&gt;
 &lt;h3&gt;The definition of &lt;span class=inline-code&gt;Curry&lt;/span&gt; and various instances&lt;/h3&gt;
 
 
@@ -498,6 +499,7 @@ curryPair A B =
 
 
 
+&lt;a name=&quot;1&quot; /&gt;
 &lt;h3&gt;Using &lt;span class=inline-code&gt;REWRITE&lt;/span&gt; to guide the typechecker&lt;/h3&gt;
 
 
@@ -628,6 +630,7 @@ of reifying the domain of the function we want to curry. Annoying.&lt;/p&gt;
 
 
 
+&lt;a name=&quot;0&quot; /&gt;
 &lt;h2&gt;&lt;center&gt;Canonical Structures to the rescue!&lt;/center&gt;&lt;/h2&gt;
 
 
@@ -642,7 +645,7 @@ going to use it to generate the right sort of currying.&lt;/p&gt;
 
 
 
-&lt;h3&gt;The Class of domains which can be curried&lt;/h3&gt;
+&lt;a name=&quot;TheClassOfDomainsWhichCanBeCurried&quot; /&gt;&lt;h3&gt;The Class of domains which can be curried&lt;/h3&gt;
 
 
 
@@ -719,6 +722,7 @@ Import Currying.theory.&lt;/p&gt;
 
 
 
+&lt;a name=&quot;1&quot; /&gt;
 &lt;h3&gt;The Canonical Structures associated to &lt;span class=inline-code&gt;Currying.type&lt;/span&gt;&lt;/h3&gt;
 
 
@@ -763,7 +767,7 @@ a defaulting instance which does not do anything as witnessed by its
 
 
 
-&lt;h3&gt;Concluding Examples&lt;/h3&gt;
+&lt;a name=&quot;ConcludingExamples&quot; /&gt;&lt;h3&gt;Concluding Examples&lt;/h3&gt;
 
 
 
@@ -820,7 +824,7 @@ for a mechanised approach.&lt;/p&gt;
 
 
 
-&lt;h3&gt;The ILL fragment we are interested in.&lt;/h3&gt;
+&lt;a name=&quot;TheILLFragmentWeAreInterestedIn.&quot; /&gt;&lt;h3&gt;The ILL fragment we are interested in.&lt;/h3&gt;
 
 
 
@@ -849,7 +853,7 @@ other. This leads us to our first maxim:&lt;/p&gt;
 
 
 
-&lt;h3&gt;If it&#39;s too complicated, solve a more general problem!&lt;/h3&gt;
+&lt;a name=&quot;IfIt&#39;sTooComplicated,SolveAMoreGeneralProblem!&quot; /&gt;&lt;h3&gt;If it&#39;s too complicated, solve a more general problem!&lt;/h3&gt;
 
 
 
@@ -925,7 +929,7 @@ obstacle teaches us our second principle:&lt;/p&gt;
 
 
 
-&lt;h3&gt;Never ditch the structure you might want to use later on!&lt;/h3&gt;
+&lt;a name=&quot;NeverDitchTheStructureYouMightWantToUseLaterOn!&quot; /&gt;&lt;h3&gt;Never ditch the structure you might want to use later on!&lt;/h3&gt;
 
 
 
@@ -965,7 +969,7 @@ Hence our last slogan:&lt;/p&gt;
 
 
 
-&lt;h3&gt;Never do more than you need to!&lt;/h3&gt;
+&lt;a name=&quot;NeverDoMoreThanYouNeedTo!&quot; /&gt;&lt;h3&gt;Never do more than you need to!&lt;/h3&gt;
 
 
 
@@ -981,7 +985,7 @@ insert left rules wherever needed.&lt;/p&gt;
 
 
 
-&lt;h3&gt;Conclusion&lt;/h3&gt;
+&lt;a name=&quot;Conclusion&quot; /&gt;&lt;h3&gt;Conclusion&lt;/h3&gt;
 
 
 
@@ -1025,7 +1029,7 @@ various projects that benefited from it.&lt;/p&gt;
 
 
 
-&lt;h3&gt;Baby steps&lt;/h3&gt;
+&lt;a name=&quot;BabySteps&quot; /&gt;&lt;h3&gt;Baby steps&lt;/h3&gt;
 
 
 
@@ -1046,7 +1050,7 @@ really simple .travis.yml file&lt;/a&gt; to the tree.&lt;/p&gt;
 
 
 
-&lt;h3&gt;Using Github tokens&lt;/h3&gt;
+&lt;a name=&quot;UsingGithubTokens&quot; /&gt;&lt;h3&gt;Using Github tokens&lt;/h3&gt;
 
 
 
@@ -1058,6 +1062,7 @@ pages&lt;/a&gt;.&lt;/p&gt;
 
 
 
+&lt;a name=&quot;0&quot; /&gt;
 &lt;h4&gt;Building &lt;a href=&quot;http://gallais.org&quot;&gt;this very website&lt;/a&gt;&lt;/h4&gt;
 
 
@@ -1089,6 +1094,7 @@ repository. To do so, one needs to generate personal access tokens
 
 
 
+&lt;a name=&quot;1&quot; /&gt;
 &lt;h4&gt;&lt;a href=&quot;http://impega.github.io/reciptacle&quot;&gt;Publishing recipes&lt;/a&gt; with a little bit of bash magic&lt;/h4&gt;
 
 
@@ -1113,6 +1119,7 @@ in our various scripts.&lt;/p&gt;
 
 
 
+&lt;a name=&quot;2&quot; /&gt;
 &lt;h4&gt;&lt;a href=&quot;https://agda.github.io/agda-stdlib/&quot;&gt;Documentation for Agda&#39;s
 standard library&lt;/a&gt;&lt;/h4&gt;
 
@@ -1125,7 +1132,7 @@ travis generating the standard library&#39;s documentation.&lt;/p&gt;
 
 
 
-&lt;h3&gt;Encrypting Dropbox credentials&lt;/h3&gt;
+&lt;a name=&quot;EncryptingDropboxCredentials&quot; /&gt;&lt;h3&gt;Encrypting Dropbox credentials&lt;/h3&gt;
 
 
 
@@ -1141,7 +1148,7 @@ repository.&lt;/p&gt;
 
 
 
-&lt;h4&gt;Building a statically-linked Agda executable&lt;/h4&gt;
+&lt;a name=&quot;BuildingAStatically-linkedAgdaExecutable&quot; /&gt;&lt;h4&gt;Building a statically-linked Agda executable&lt;/h4&gt;
 
 
 
@@ -1187,7 +1194,7 @@ I want. If someone knows &lt;i&gt;the right way&lt;/i&gt; to do it, please do sh
 
 
 
-&lt;h3&gt;Get Travis to build your drafts!&lt;/h3&gt;
+&lt;a name=&quot;GetTravisToBuildYourDrafts!&quot; /&gt;&lt;h3&gt;Get Travis to build your drafts!&lt;/h3&gt;
 
 
 
@@ -1245,7 +1252,7 @@ removing some of them from the cycle.&lt;/p&gt;
 
 
 
-&lt;h3&gt;Fegaras and Sheard&#39;s solution&lt;/h3&gt;
+&lt;a name=&quot;FegarasAndSheard&#39;sSolution&quot; /&gt;&lt;h3&gt;Fegaras and Sheard&#39;s solution&lt;/h3&gt;
 
 
 
@@ -1279,7 +1286,7 @@ toStream xs@(CRec x r) = x : toStream (r xs)&lt;/p&gt;
 
 
 
-&lt;h3&gt;The limitations of this representation&lt;/h3&gt;
+&lt;a name=&quot;TheLimitationsOfThisRepresentation&quot; /&gt;&lt;h3&gt;The limitations of this representation&lt;/h3&gt;
 
 
 
@@ -1292,7 +1299,7 @@ consequence, the encoding lacks canonicity.&lt;/p&gt;
 
 
 
-&lt;h3&gt;There is no guarantee on the way pointers are used (if at all)&lt;/h3&gt;
+&lt;a name=&quot;ThereIsNoGuaranteeOnTheWayPointersAreUsed(ifAtAll)&quot; /&gt;&lt;h3&gt;There is no guarantee on the way pointers are used (if at all)&lt;/h3&gt;
 
 
 
@@ -1330,7 +1337,7 @@ of the cycle without being rejected by the typechecker:&lt;/p&gt;
 
 
 
-&lt;h3&gt;Useful functions cannot be written without unfolding the
+&lt;a name=&quot;UsefulFunctionsCannotBeWrittenWithoutUnfoldingTheCycle&quot; /&gt;&lt;h3&gt;Useful functions cannot be written without unfolding the
 cycle&lt;/h3&gt;
 
 
@@ -1359,7 +1366,7 @@ problems: the type system!&lt;/p&gt;
 
 
 
-&lt;h3&gt;Calling the type system to the rescue.&lt;/h3&gt;
+&lt;a name=&quot;CallingTheTypeSystemToTheRescue.&quot; /&gt;&lt;h3&gt;Calling the type system to the rescue.&lt;/h3&gt;
 
 
 
@@ -1559,7 +1566,7 @@ equality on these cyclic structures. Exciting perspectives.&lt;/p&gt;
 
 
 
-&lt;h3&gt;Conclusion&lt;/h3&gt;
+&lt;a name=&quot;Conclusion&quot; /&gt;&lt;h3&gt;Conclusion&lt;/h3&gt;
 
 
 
@@ -1597,7 +1604,7 @@ make sense.&lt;/p&gt;
 
 
 
-&lt;h3&gt;Quick definition&lt;/h3&gt;
+&lt;a name=&quot;QuickDefinition&quot; /&gt;&lt;h3&gt;Quick definition&lt;/h3&gt;
 
 
 
@@ -1641,7 +1648,7 @@ of being inconsistent...&lt;/p&gt;
 
 
 
-&lt;h3&gt;The encoding&lt;/h3&gt;
+&lt;a name=&quot;TheEncoding&quot; /&gt;&lt;h3&gt;The encoding&lt;/h3&gt;
 
 
 
@@ -1655,7 +1662,7 @@ file&lt;/a&gt;.&lt;/p&gt;
 
 
 
-&lt;h4&gt;What one would write in Agda&lt;/h4&gt;
+&lt;a name=&quot;WhatOneWouldWriteInAgda&quot; /&gt;&lt;h4&gt;What one would write in Agda&lt;/h4&gt;
 
 
 
@@ -1675,7 +1682,7 @@ fresh ones &lt;a id=&quot;reftop2&quot; href=&quot;#refbot2&quot;&gt;[2]&lt;/a&g
 
 
 
-&lt;h4&gt;A naïve translation using large indexes&lt;/h4&gt;
+&lt;a name=&quot;ANaïveTranslationUsingLargeIndexes&quot; /&gt;&lt;h4&gt;A naïve translation using large indexes&lt;/h4&gt;
 
 
 
@@ -1704,7 +1711,7 @@ it&#39;d better be a small one. This is precisely what the encoding does.&lt;/p&
 
 
 
-&lt;h4&gt;Barras&#39; encoding&lt;/h4&gt;
+&lt;a name=&quot;Barras&#39;Encoding&quot; /&gt;&lt;h4&gt;Barras&#39; encoding&lt;/h4&gt;
 
 
 
@@ -1761,7 +1768,7 @@ to convince Agda that everything is fine.&lt;/p&gt;
 
 
 
-&lt;h3&gt;Conclusion&lt;/h3&gt;
+&lt;a name=&quot;Conclusion&quot; /&gt;&lt;h3&gt;Conclusion&lt;/h3&gt;
 
 
 
@@ -1809,6 +1816,7 @@ to the actual meat of this post: the lazy equality test.&lt;/p&gt;
 
 
 
+&lt;a name=&quot;0&quot; /&gt;
 &lt;h3&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#804&quot;&gt;Binding? de Bruijn!&lt;/a&gt;&lt;/h3&gt;
 
 
@@ -1846,6 +1854,7 @@ subst (app t u) ρ = app (subst t ρ) (subst u ρ)
 
 
 
+&lt;a name=&quot;1&quot; /&gt;
 &lt;h3&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#2195&quot;&gt;Type level de Bruijn indices&lt;/a&gt;&lt;/h3&gt;
 
 
@@ -1899,6 +1908,7 @@ pass under a binder.&lt;/p&gt;
 
 
 
+&lt;a name=&quot;2&quot; /&gt;
 &lt;h3&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#5159&quot;&gt;Lazy weakenings&lt;/a&gt;&lt;/h3&gt;
 
 
@@ -1936,6 +1946,7 @@ as valid.&lt;/p&gt;
 
 
 
+&lt;a name=&quot;3&quot; /&gt;
 &lt;h3&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#7263&quot;&gt;Equality testing&lt;/a&gt;&lt;/h3&gt;
 
 
@@ -1954,6 +1965,7 @@ form&lt;/i&gt;.&lt;/p&gt;
 
 
 
+&lt;a name=&quot;4&quot; /&gt;
 &lt;h3&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#7932&quot;&gt;Lazy equality testing&lt;/a&gt;&lt;/h3&gt;
 
 
@@ -1966,6 +1978,7 @@ testing.&lt;/p&gt;
 
 
 
+&lt;a name=&quot;5&quot; /&gt;
 &lt;h4&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#4498&quot;&gt;Context inclusions&lt;/a&gt;&lt;/h4&gt;
 
 
@@ -1993,6 +2006,7 @@ moment one encounters a weakening. &lt;/p&gt;
 
 
 
+&lt;a name=&quot;6&quot; /&gt;
 &lt;h4&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#10054&quot;&gt;Term comparison&lt;/a&gt;&lt;/h4&gt;
 
 
@@ -2058,6 +2072,7 @@ deciding equality.&lt;/p&gt;
 
 
 
+&lt;a name=&quot;7&quot; /&gt;
 &lt;h4&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#8474&quot;&gt;Variable
 comparison&lt;/a&gt;&lt;/h4&gt;
 
@@ -2111,6 +2126,7 @@ counter and keep comparing the rest of the inclusion proofs.&lt;/p&gt;
 
 
 
+&lt;a name=&quot;8&quot; /&gt;
 &lt;h4&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#12026&quot;&gt;Testing equality&lt;/a&gt;&lt;/h4&gt;
 
 
@@ -2158,7 +2174,7 @@ amusing to develop anyway so here it is.&lt;/p&gt;
 
 
 
-&lt;h3&gt;The data structures involved&lt;/h3&gt;
+&lt;a name=&quot;TheDataStructuresInvolved&quot; /&gt;&lt;h3&gt;The data structures involved&lt;/h3&gt;
 
 
 
@@ -2168,7 +2184,7 @@ operations morally implementing the same concepts can have the same name.&lt;/p&
 
 
 
-&lt;h4&gt;Dimensions&lt;/h4&gt;
+&lt;a name=&quot;Dimensions&quot; /&gt;&lt;h4&gt;Dimensions&lt;/h4&gt;
 
 
 
@@ -2212,7 +2228,7 @@ which is instantiated with &lt;span class=inline-code&gt;+ 1&lt;/span&gt;. As an
 
 
 
-&lt;h4&gt;Units of measure&lt;/h4&gt;
+&lt;a name=&quot;UnitsOfMeasure&quot; /&gt;&lt;h4&gt;Units of measure&lt;/h4&gt;
 
 
 
@@ -2266,7 +2282,7 @@ min = 60 , _ # sec&lt;/p&gt;
 
 
 
-&lt;h4&gt;Values&lt;/h4&gt;
+&lt;a name=&quot;Values&quot; /&gt;&lt;h4&gt;Values&lt;/h4&gt;
 
 
 
@@ -2311,7 +2327,7 @@ from one type to an other.&lt;/p&gt;
 
 
 
-&lt;h3&gt;Examples&lt;/h3&gt;
+&lt;a name=&quot;Examples&quot; /&gt;&lt;h3&gt;Examples&lt;/h3&gt;
 
 
 
@@ -2326,7 +2342,7 @@ For instance, the following expression normalizes to &lt;span class=inline-code&
 
 
 
-&lt;h3&gt;Application: simulating the free fall of a ball&lt;/h3&gt;
+&lt;a name=&quot;Application:SimulatingTheFreeFallOfABall&quot; /&gt;&lt;h3&gt;Application: simulating the free fall of a ball&lt;/h3&gt;
 
 
 
@@ -2374,7 +2390,7 @@ trajectory in the vertical plan.&lt;/p&gt;
 &lt;center&gt;&lt;img src=&quot;/img/freefall.png&quot; /&gt;&lt;/center&gt;
 
 
-&lt;h3&gt;Conclusions&lt;/h3&gt;
+&lt;a name=&quot;Conclusions&quot; /&gt;&lt;h3&gt;Conclusions&lt;/h3&gt;
 
 
 
@@ -2445,7 +2461,7 @@ properties in Type Theory.&lt;/p&gt;
 
 
 
-&lt;h3&gt;The setting&lt;/h3&gt;
+&lt;a name=&quot;TheSetting&quot; /&gt;&lt;h3&gt;The setting&lt;/h3&gt;
 
 
 
@@ -2487,7 +2503,7 @@ operations.&lt;/p&gt;
 
 
 
-&lt;h3&gt;Model definition - where the glueing happens&lt;/h3&gt;
+&lt;a name=&quot;ModelDefinition-WhereTheGlueingHappens&quot; /&gt;&lt;h3&gt;Model definition - where the glueing happens&lt;/h3&gt;
 
 
 
@@ -2527,7 +2543,7 @@ notion of weakening can be made formal.&lt;/p&gt;
 
 
 
-&lt;h3&gt;The (not so) trivial quoting function&lt;/h3&gt;
+&lt;a name=&quot;The(notSo)TrivialQuotingFunction&quot; /&gt;&lt;h3&gt;The (not so) trivial quoting function&lt;/h3&gt;
 
 
 
@@ -2566,7 +2582,7 @@ average normalization by evaluation formalization.&lt;/p&gt;
 
 
 
-&lt;h3&gt;Evaluation function&lt;/h3&gt;
+&lt;a name=&quot;EvaluationFunction&quot; /&gt;&lt;h3&gt;Evaluation function&lt;/h3&gt;
 
 
 
@@ -2623,7 +2639,7 @@ norm[ σ ] t = ↑[ σ ] eval t (⊩ε-refl _)&lt;/p&gt;
 
 
 
-&lt;h3&gt;Conclusions&lt;/h3&gt;
+&lt;a name=&quot;Conclusions&quot; /&gt;&lt;h3&gt;Conclusions&lt;/h3&gt;
 
 
 
@@ -2667,7 +2683,7 @@ rather than e.g. a pre-processor.&lt;/p&gt;
 
 
 
-&lt;h3&gt;The universe&lt;/h3&gt;
+&lt;a name=&quot;TheUniverse&quot; /&gt;&lt;h3&gt;The universe&lt;/h3&gt;
 
 
 
@@ -2741,7 +2757,7 @@ some point.&lt;/p&gt;
 
 
 
-&lt;h4&gt;What is a variable?&lt;/h4&gt;
+&lt;a name=&quot;WhatIsAVariable?&quot; /&gt;&lt;h4&gt;What is a variable?&lt;/h4&gt;
 
 
 
@@ -2770,7 +2786,7 @@ are strictly positive by construction and accordingly have a fixpoint.&lt;/p&gt;
 
 
 
-&lt;h3&gt;Defining substitution&lt;/h3&gt;
+&lt;a name=&quot;DefiningSubstitution&quot; /&gt;&lt;h3&gt;Defining substitution&lt;/h3&gt;
 
 
 
@@ -2836,7 +2852,7 @@ it is rather easy to define what&#39;s named β reduction in the lambda calculus
 
 
 
-&lt;h3&gt;Examples&lt;/h3&gt;
+&lt;a name=&quot;Examples&quot; /&gt;&lt;h3&gt;Examples&lt;/h3&gt;
 
 
 
@@ -2893,7 +2909,7 @@ lemma = ∷ ♯ lemma&lt;/p&gt;
 
 
 
-&lt;h3&gt;What&#39;s next?&lt;/h3&gt;
+&lt;a name=&quot;What&#39;sNext?&quot; /&gt;&lt;h3&gt;What&#39;s next?&lt;/h3&gt;
 
 
 
