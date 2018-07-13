@@ -31,8 +31,7 @@ options are granted by a set of parameters.&lt;/p&gt;
 
 
 
-&lt;p class=code&gt;
-record Parameters : Set₁ where
+&lt;p class=code&gt;record Parameters : Set₁ where
   field
     Tok  : Set
     Toks : ℕ → Set
@@ -80,8 +79,7 @@ from the input.&lt;/p&gt;
 
 
 
-&lt;p class=code&gt;
-record Parameters : Set₁ where
+&lt;p class=code&gt;record Parameters : Set₁ where
   field
   (...)
     recordToken : Tok → M ⊤
@@ -110,8 +108,7 @@ offset respectively.&lt;/p&gt;
 
 
 
-&lt;p class=code&gt;
-record Position : Set where
+&lt;p class=code&gt;record Position : Set where
   field line   : ℕ
         offset : ℕ
 &lt;/p&gt;
@@ -124,8 +121,7 @@ increment the offset.&lt;/p&gt;
 
 
 
-&lt;p class=code&gt;
-next : Char → Position → Position
+&lt;p class=code&gt;next : Char → Position → Position
 next c p = if c == &#39;\n&#39;
   then record { line = suc (line p) ; offset = 0 }
   else record p { offset = suc (offset p) }
@@ -180,8 +176,7 @@ hard failures (which are fatal).&lt;/p&gt;
 
 
 
-&lt;p class=code&gt;
-data Result (A : Set) : Set where
+&lt;p class=code&gt;data Result (A : Set) : Set where
   HardFail : Error → Result A
   SoftFail : Error → Result A
   Value    : A → Result A
@@ -196,8 +191,7 @@ a [emph]soft[/emph] failure. Otherwise we propagate the error.&lt;/p&gt;
 
 
 
-&lt;p class=code&gt;
-_∣_ : ∀ {A} → Result A → Result A → Result A
+&lt;p class=code&gt;_∣_ : ∀ {A} → Result A → Result A → Result A
 ma₁ ∣ ma₂ = case ma₁ of λ where
   (SoftFail _) → ma₂
   r            → r
@@ -211,8 +205,7 @@ ma₁ ∣ ma₂ = case ma₁ of λ where
 
 
 
-&lt;p class=code&gt;
-commit : ∀ {A} → Result A → Result A
+&lt;p class=code&gt;commit : ∀ {A} → Result A → Result A
 commit ma = case ma of λ where
   (SoftFail e) → HardFail e
   r            → r
@@ -239,8 +232,21 @@ a heuristics to decide which error to propagate.&lt;/p&gt;
 
 
 
+&lt;a name=&quot;Conclusion&quot; /&gt;&lt;h2&gt;Conclusion&lt;/h2&gt;
 
-&lt;a name=&quot;Acknowledgements&quot; /&gt;&lt;h4&gt;Acknowledgements&lt;/h4&gt;
+
+
+&lt;p&gt;We have seen how to add instrumentation to parsers written using total
+parser combinators by changing the one combinator which pulls tokens directly
+from the input and picking an appropriate monad stack. You can see these
+design decisions in use in the STLC parser in
+&lt;a href=&quot;https://github.com/gallais/agdarky/blob/aca1ccd76bdb341e7cba03c26a5e233935cf1306/src/stlc/Parse.agda#L62&quot;&gt;agarky&lt;/a&gt;,
+a project bringing together some of my libraries to write software entirely
+in Agda.&lt;/p&gt;
+
+
+
+&lt;a name=&quot;Acknowledgements&quot; /&gt;&lt;h3&gt;Acknowledgements&lt;/h3&gt;
 
 
 
