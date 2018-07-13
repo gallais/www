@@ -1,5 +1,258 @@
-<rss version="2.0"><channel><title>gallais&#39; blog</title><link>http://blog.gallais.org</link><description>gallais&#39; blog</description><item><title>Instrumenting Total Parsers Written in agdarsec</title><link>http://blog.gallais.org/instrumenting-agdarsec.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Instrumenting Total Parsers Written in agdarsec&lt;/h1&gt;(line 173, column 3):
-unexpected OPENTOK LI</description><guid isPermaLink="true">http://blog.gallais.org/instrumenting-agdarsec.html</guid><pubDate>Fri, 13 Jul 2018 13:37:00 UTC</pubDate></item><item><title>Three Tricks to make Termination Obvious</title><link>http://blog.gallais.org/termination-tricks.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Three Tricks to make Termination Obvious&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;http://homepages.inf.ed.ac.uk/wadler/topics/language-design.html#prettier&quot;&gt;Wadler&#39;s Prettier Printer&lt;/a&gt;&lt;/li&gt;
+<rss version="2.0"><channel><title>gallais&#39; blog</title><link>http://blog.gallais.org</link><description>gallais&#39; blog</description><item><title>Instrumenting Total Parsers Written in agdarsec</title><link>http://blog.gallais.org/instrumenting-agdarsec.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Instrumenting Total Parsers Written in agdarsec&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://www.github.com/gallais/agdarsec&quot;&gt;agdarsec&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://gallais.github.io/agdarsec/&quot;&gt;documentation&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;
+
+
+&lt;p id=chapo&gt;A common request I have received from (potential) users of my
+library of total parser combinators is to add support for error reporting.
+This is the story of adding such a machinery with minimal changes to the
+combinators themselves.&lt;/p&gt;
+
+
+
+&lt;a name=&quot;The(Idealized)TypeOfParsers&quot; /&gt;&lt;h2&gt;The (Idealized) Type of Parsers&lt;/h2&gt;
+
+
+
+&lt;p&gt;The type of total parser combinators in
+&lt;a href=&quot;https://github.com/gallais/agdarsec&quot;&gt;agdarsec&lt;/a&gt; is essentially a
+fancy version of the classic Haskell type &lt;tt&gt;Parser a = String -&gt; [(String, a)]&lt;/tt&gt;.
+The added complexity has two goals: to enforce totality and to give the
+user more configuration options.&lt;/p&gt;
+
+
+
+&lt;a name=&quot;ParametersOfTheParser.&quot; /&gt;&lt;h3&gt;Parameters of the Parser.&lt;/h3&gt;
+
+
+
+&lt;p&gt;If the support for totality is baked in the representation
+&lt;a id=&quot;reftop1&quot; href=&quot;#refbot1&quot;&gt;[1]&lt;/a&gt;, the configuration
+options are granted by a set of parameters.&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;
+record Parameters : Set₁ where
+  field
+    Tok  : Set
+    Toks : ℕ → Set
+    M    : Set → Set
+&lt;/p&gt;
+
+
+
+&lt;p&gt;These parameters allow the user to specify a type of tokens &lt;tt&gt;Tok&lt;/tt&gt; the
+parser is working on (for instance &lt;tt&gt;Char&lt;/tt&gt;), the type of the sized input
+&lt;tt&gt;Toks&lt;/tt&gt; (typically something like &lt;tt&gt;Vec Tok&lt;/tt&gt;) and a monad &lt;tt&gt;M&lt;/tt&gt;.
+The fact that the input is sized is essential for proving termination but is
+largely irrelevant from the end-user&#39;s point of view. In effect the parser type
+is morally equivalent to &lt;tt&gt;Parser a = Toks → M (a, Toks)&lt;/tt&gt; where the size
+of the &lt;tt&gt;Toks&lt;/tt&gt; in the output is smaller than that of the one in the input.&lt;/p&gt;
+
+
+
+&lt;p&gt;These definitions are already enough to define a wealth of parser combinators
+ranging from conjunction, disjunction, left or right associated chains, etc. all
+relying on the properties of &lt;tt&gt;M&lt;/tt&gt; (e.g. &lt;tt&gt;Alternative M&lt;/tt&gt; gives us the
+ability to defined the disjunction combinator) to realise the expected behaviour.
+For unambiguous grammars a simple &lt;tt&gt;Maybe&lt;/tt&gt;-based solution worsk really well.&lt;/p&gt;
+
+
+
+
+&lt;p&gt;However by using &lt;tt&gt;Maybe&lt;/tt&gt; as our monad, whenever a parse fails the user
+does not get any information about the failure. It makes debugging the parser (or
+the expression being parsed) quite hard. This is where instrumentation comes in.&lt;/p&gt;
+
+
+
+
+&lt;a name=&quot;InstrumentingAParser&quot; /&gt;&lt;h2&gt;Instrumenting a Parser&lt;/h2&gt;
+
+
+
+&lt;p&gt;Most of the instrumentation can be done by picking a more appropriate stack of
+monad transformers for &lt;tt&gt;M&lt;/tt&gt;. Keeping track of the position of the parser in
+the original source file is the one thing that needs to be hard-wired by extending
+the set of &lt;tt&gt;Parameters&lt;/tt&gt; of a &lt;tt&gt;Parser&lt;/tt&gt;. We add one new field:
+&lt;tt&gt;recordToken&lt;/tt&gt; which is to be used [emph]every[/emph] time a token is read
+from the input.&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;
+record Parameters : Set₁ where
+  field
+  (...)
+    recordToken : Tok → M ⊤
+&lt;/p&gt;
+
+
+
+&lt;p&gt;The only change to the combinators in the library is in &lt;tt&gt;anyToken&lt;/tt&gt;,
+the function which grabs the first token on the input (if it exists). It now
+performs an extra operation before returning the grabbed value: it uses our
+new &lt;tt&gt;recordToken&lt;/tt&gt; to remember the what was obtained.&lt;/p&gt;
+
+
+
+&lt;a name=&quot;PositionTracking&quot; /&gt;&lt;h3&gt;Position Tracking&lt;/h3&gt;
+
+
+
+&lt;p&gt;Now that we record every token read from the input, we can start tracking
+the current position in the source file. This can be used to associate a
+position to each nodes of the Abstract Syntax Tree our parser produces
+which is useful if we are for instance writing a compiler and want to be
+able to report precise errors to users further down the line. We model
+positions with two natural numbers corresponding to the line and character
+offset respectively.&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;
+record Position : Set where
+  field line   : ℕ
+        offset : ℕ
+&lt;/p&gt;
+
+
+
+&lt;p&gt;Each character yields an action on positions: if it is a newline character
+then we increment the line count and reset the offset one; otherwise we simply
+increment the offset.&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;
+next : Char → Position → Position
+next c p = if c == &#39;\n&#39;
+  then record { line = suc (line p) ; offset = 0 }
+  else record p { offset = suc (offset p) }
+&lt;/p&gt;
+
+
+
+&lt;p&gt;By using a &lt;tt&gt;StateT Position&lt;/tt&gt; transformer in our monad stack and
+making sure that &lt;tt&gt;recordToken&lt;/tt&gt; updates the state by calling &lt;tt&gt;next&lt;/tt&gt;,
+we now have extended character-based parsers to be position-aware.&lt;/p&gt;
+
+
+
+&lt;p&gt;Not only can this be used to produce ASTs recording the source file positions
+corresponding to each of their nodes, it also allows us to report parsing errors
+more accurately by returning the position at the point of failure.&lt;/p&gt;
+
+
+
+&lt;a name=&quot;DistinguishingSoftAndHardFailures&quot; /&gt;&lt;h3&gt;Distinguishing Soft and Hard Failures&lt;/h3&gt;
+
+
+
+&lt;p&gt;Simply using &lt;tt&gt;StateT Position (Position ⊎_)&lt;/tt&gt; as our monad does not
+quite yield the behaviour we expect. If a parser cannot succeed on a source file,
+it will always return as its position at the time of failure the one corresponding
+to the failure in the rightmost path in our grammar. Indeed at each disjunction,
+a failure in the left branch is recovered from by trying the right branch. However
+this is often not what we want.&lt;/p&gt;
+
+
+
+&lt;p&gt;For instance if we were to parse numbers written in either binary or hexadecimal
+format, we could describe the parser as a disjunction between a parser for strings
+of the form &lt;tt&gt;0b[01]+&lt;/tt&gt; and one for strings of the form &lt;tt&gt;0x[0-9A-F]+&lt;/tt&gt;.
+For the input &quot;0b0000002&quot; the parser would:
+&lt;ul&gt;&lt;li&gt; take the first branch and fail upon finding &#39;2&#39;&lt;/li&gt;
+&lt;li&gt; backtrack to the disjunction&lt;/li&gt;
+&lt;li&gt; take the second branch and fail upon finding &#39;b&#39;&lt;/li&gt;
+&lt;li&gt; finish with an error reporting failure at the position of &#39;b&#39;&lt;/li&gt;&lt;/ul&gt;
+
+Ideally we would like to bypass completely the second branch because having read &quot;0b&quot;,
+we know that it can only fail. And we would like the error location to be that of &#39;2&#39;,
+not of &#39;b&#39; because we feel like it&#39;s a fairer assessment of what the problem is.&lt;/p&gt;
+
+
+
+&lt;p&gt;In other words: after having read a disambiguating token we sometimes want to
+[emph]commit[/emph] to one branch of the disjunction, ignoring the alternatives.
+We can do this by distinguishing soft failures (from which we can recover) from
+hard failures (which are fatal).&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;
+data Result (A : Set) : Set where
+  HardFail : Error → Result A
+  SoftFail : Error → Result A
+  Value    : A → Result A
+&lt;/p&gt;
+
+
+
+&lt;p&gt;The &lt;tt&gt;Alternative&lt;/tt&gt; instance for &lt;tt&gt;Result&lt;/tt&gt; is similar to that of
+&lt;tt&gt;A ⊎_&lt;/tt&gt;: if the first computation has failed then we try the second one.
+The only difference here is that we only try the other branch if we are facing
+a [emph]soft[/emph] failure. Otherwise we propagate the error.&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;
+_∣_ : ∀ {A} → Result A → Result A → Result A
+ma₁ ∣ ma₂ = case ma₁ of λ where
+  (SoftFail _) → ma₂
+  r            → r
+&lt;/p&gt;
+
+
+
+&lt;p&gt;This distinction between soft and hard failures gives us the ability to
+&lt;tt&gt;commit&lt;/tt&gt; to one branch by turning [emph]soft[/emph] failures into
+[emph]hard[/emph] ones.&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;
+commit : ∀ {A} → Result A → Result A
+commit ma = case ma of λ where
+  (SoftFail e) → HardFail e
+  r            → r
+&lt;/p&gt;
+
+
+
+&lt;p&gt;This &lt;tt&gt;Result&lt;/tt&gt; type, the associated alternative instance and the use
+of &lt;tt&gt;commit&lt;/tt&gt; bring two benefits to the table:
+&lt;ul&gt;&lt;li&gt; the parser finishes faster when it fails because it ignores all the
+       alternative branches&lt;/li&gt;
+&lt;li&gt; the parser returns a more relevant error to the end-user rather than
+       the one found in the last of the alternatives&lt;/li&gt;&lt;/ul&gt;
+&lt;/p&gt;
+
+
+
+&lt;p&gt;It is important to note that we get all of this without having to modify
+the parser combinators; the setup is generic enough that end-users can drastically
+alter a parser&#39;s behaviour and the amount of information it returns simply by
+switching to a different monad stack. We can still think of alternatives such
+as trying the second branch of the disjunction and in case it also fails use
+a heuristics to decide which error to propagate.&lt;/p&gt;
+
+
+
+
+&lt;a name=&quot;Acknowledgements&quot; /&gt;&lt;h4&gt;Acknowledgements&lt;/h4&gt;
+
+
+
+&lt;p&gt;This work would not have been possible without discussions with
+&lt;a href=&quot;https://github.com/clayrat&quot;&gt;@clayrat&lt;/a&gt; on the
+design, implementation and testing of the instrumentation of agdarsec and
+their port of the changes to the Idris version of the library
+(&lt;a href=&quot;https://github.com/gallais/idris-tparsec&quot;&gt;idris-tparsec&lt;/a&gt;).
+&lt;/p&gt;
+
+&lt;h3&gt;Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;For more details, read the &lt;a href=&quot;https://gallais.github.io/pdf/agdarsec18.pdf&quot;&gt;paper&lt;/a&gt;
+discussing the first version of the library.&lt;/div&gt;&lt;/p&gt;&lt;/div&gt;</description><guid isPermaLink="true">http://blog.gallais.org/instrumenting-agdarsec.html</guid><pubDate>Fri, 13 Jul 2018 13:37:00 UTC</pubDate></item><item><title>Three Tricks to make Termination Obvious</title><link>http://blog.gallais.org/termination-tricks.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Three Tricks to make Termination Obvious&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;http://homepages.inf.ed.ac.uk/wadler/topics/language-design.html#prettier&quot;&gt;Wadler&#39;s Prettier Printer&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;https://github.com/gallais/potpourri/tree/master/agda/prettier&quot;&gt;Prettier Printer in Agda&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;
 
 
