@@ -74,7 +74,7 @@ the expression being parsed) quite hard. This is where instrumentation comes in.
 monad transformers for &lt;tt&gt;M&lt;/tt&gt;. Keeping track of the position of the parser in
 the original source file is the one thing that needs to be hard-wired by extending
 the set of &lt;tt&gt;Parameters&lt;/tt&gt; of a &lt;tt&gt;Parser&lt;/tt&gt;. We add one new field:
-&lt;tt&gt;recordToken&lt;/tt&gt; which is to be used [emph]every[/emph] time a token is read
+&lt;tt&gt;recordToken&lt;/tt&gt; which is to be used &lt;i&gt;every&lt;/i&gt; time a token is read
 from the input.&lt;/p&gt;
 
 
@@ -170,7 +170,7 @@ not of &#39;b&#39; because we feel like it&#39;s a fairer assessment of what the
 
 
 &lt;p&gt;In other words: after having read a disambiguating token we sometimes want to
-[emph]commit[/emph] to one branch of the disjunction, ignoring the alternatives.
+&lt;i&gt;commit&lt;/i&gt; to one branch of the disjunction, ignoring the alternatives.
 We can do this by distinguishing soft failures (from which we can recover) from
 hard failures (which are fatal).&lt;/p&gt;
 
@@ -187,7 +187,7 @@ hard failures (which are fatal).&lt;/p&gt;
 &lt;p&gt;The &lt;tt&gt;Alternative&lt;/tt&gt; instance for &lt;tt&gt;Result&lt;/tt&gt; is similar to that of
 &lt;tt&gt;A ⊎_&lt;/tt&gt;: if the first computation has failed then we try the second one.
 The only difference here is that we only try the other branch if we are facing
-a [emph]soft[/emph] failure. Otherwise we propagate the error.&lt;/p&gt;
+a &lt;i&gt;soft&lt;/i&gt; failure. Otherwise we propagate the error.&lt;/p&gt;
 
 
 
@@ -200,8 +200,8 @@ ma₁ ∣ ma₂ = case ma₁ of λ where
 
 
 &lt;p&gt;This distinction between soft and hard failures gives us the ability to
-&lt;tt&gt;commit&lt;/tt&gt; to one branch by turning [emph]soft[/emph] failures into
-[emph]hard[/emph] ones.&lt;/p&gt;
+&lt;tt&gt;commit&lt;/tt&gt; to one branch by turning &lt;i&gt;soft&lt;/i&gt; failures into
+&lt;i&gt;hard&lt;/i&gt; ones.&lt;/p&gt;
 
 
 
@@ -240,7 +240,7 @@ a heuristics to decide which error to propagate.&lt;/p&gt;
 parser combinators by changing the one combinator which pulls tokens directly
 from the input and picking an appropriate monad stack. You can see these
 design decisions in use in the STLC parser in
-&lt;a href=&quot;https://github.com/gallais/agdarky/blob/aca1ccd76bdb341e7cba03c26a5e233935cf1306/src/stlc/Parse.agda#L62&quot;&gt;agarky&lt;/a&gt;,
+&lt;a href=&quot;https://github.com/gallais/agdarky/blob/aca1ccd76bdb341e7cba03c26a5e233935cf1306/src/stlc/Parse.agda#L62&quot;&gt;agdarky&lt;/a&gt;,
 a project bringing together some of my libraries to write software entirely
 in Agda.&lt;/p&gt;
 

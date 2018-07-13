@@ -98,7 +98,7 @@ the expression being parsed) quite hard. This is where instrumentation comes in.
 monad transformers for <tt>M</tt>. Keeping track of the position of the parser in
 the original source file is the one thing that needs to be hard-wired by extending
 the set of <tt>Parameters</tt> of a <tt>Parser</tt>. We add one new field:
-<tt>recordToken</tt> which is to be used [emph]every[/emph] time a token is read
+<tt>recordToken</tt> which is to be used <i>every</i> time a token is read
 from the input.</p>
 
 
@@ -194,7 +194,7 @@ not of 'b' because we feel like it's a fairer assessment of what the problem is.
 
 
 <p>In other words: after having read a disambiguating token we sometimes want to
-[emph]commit[/emph] to one branch of the disjunction, ignoring the alternatives.
+<i>commit</i> to one branch of the disjunction, ignoring the alternatives.
 We can do this by distinguishing soft failures (from which we can recover) from
 hard failures (which are fatal).</p>
 
@@ -211,7 +211,7 @@ hard failures (which are fatal).</p>
 <p>The <tt>Alternative</tt> instance for <tt>Result</tt> is similar to that of
 <tt>A ⊎_</tt>: if the first computation has failed then we try the second one.
 The only difference here is that we only try the other branch if we are facing
-a [emph]soft[/emph] failure. Otherwise we propagate the error.</p>
+a <i>soft</i> failure. Otherwise we propagate the error.</p>
 
 
 
@@ -224,8 +224,8 @@ ma₁ ∣ ma₂ = case ma₁ of λ where
 
 
 <p>This distinction between soft and hard failures gives us the ability to
-<tt>commit</tt> to one branch by turning [emph]soft[/emph] failures into
-[emph]hard[/emph] ones.</p>
+<tt>commit</tt> to one branch by turning <i>soft</i> failures into
+<i>hard</i> ones.</p>
 
 
 
@@ -264,7 +264,7 @@ a heuristics to decide which error to propagate.</p>
 parser combinators by changing the one combinator which pulls tokens directly
 from the input and picking an appropriate monad stack. You can see these
 design decisions in use in the STLC parser in
-<a href="https://github.com/gallais/agdarky/blob/aca1ccd76bdb341e7cba03c26a5e233935cf1306/src/stlc/Parse.agda#L62">agarky</a>,
+<a href="https://github.com/gallais/agdarky/blob/aca1ccd76bdb341e7cba03c26a5e233935cf1306/src/stlc/Parse.agda#L62">agdarky</a>,
 a project bringing together some of my libraries to write software entirely
 in Agda.</p>
 
