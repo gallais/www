@@ -1,4 +1,390 @@
-<rss version="2.0"><channel><title>gallais&#39; blog</title><link>http://blog.gallais.org</link><description>gallais&#39; blog</description><item><title>Instrumenting Total Parsers Written in agdarsec</title><link>http://blog.gallais.org/instrumenting-agdarsec.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Instrumenting Total Parsers Written in agdarsec&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://www.github.com/gallais/agdarsec&quot;&gt;agdarsec&lt;/a&gt;&lt;/li&gt;
+<rss version="2.0"><channel><title>gallais&#39; blog</title><link>http://blog.gallais.org</link><description>gallais&#39; blog</description><item><title>First Cubical Experiment</title><link>http://blog.gallais.org/first-cubical-experiment.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;First Cubical Experiment&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://agda.readthedocs.io/en/latest/language/cubical.html&quot;&gt;Cubical Agda&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/gallais/potpourri/blob/efdfa3e5f84953666dfd9b98499ae9136ade570b/agda/cubical/list0.agda&quot;&gt;list0.agda&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;
+
+
+&lt;p id=chapo&gt;
+With Agda version 2.6.0 close to being released, I decided
+to experiment with cubical Agda.
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+Now that &lt;a href=&quot;https://agda.readthedocs.io/en/latest/language/cubical.html&quot;&gt;the
+documentation for cubical Agda&lt;/a&gt; is available, it should be easier to start
+experimenting. I first tried to formalise Frumin, Geuvers, Gondelman, and van
+der Weide&#39;s &lt;a href=&quot;https://dl.acm.org/citation.cfm?id=3167085&quot;&gt;Finite Sets in
+Homotopy Type Theory&lt;/a&gt;. However I got stuck trying to write the very first
+function when I had to figure out what a path&#39;s image was. Time to go back to
+basics!
+&lt;/p&gt;
+
+
+
+&lt;a name=&quot;section0&quot; /&gt;
+&lt;h2&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section0&quot;&gt;#&lt;/a&gt; A basic datatype: &lt;tt&gt;List⁰&lt;/tt&gt;&lt;/h2&gt;
+
+
+
+&lt;p&gt;
+My attempt to boil down the problem I was facing resulted in &lt;tt&gt;List⁰&lt;/tt&gt;.
+It is a higher inductive type of strange lists: we have the two usual list
+constructors, together with a path saying that a non-empty list is equal to
+its tail.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;data List⁰ (A : Set) : Set where
+  []  : List⁰ A
+  _∷_ : A → List⁰ A → List⁰ A
+  del : ∀ x e → x ∷ e ≡ e
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+Hopefully, this mix of the familiar and the new will let us build on our
+old intuitions to understand new concepts. We can start by revisiting a
+function we know very well in the list case.
+&lt;/p&gt;
+
+
+
+&lt;a name=&quot;section1&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section1&quot;&gt;#&lt;/a&gt; Appending two &lt;tt&gt;List⁰&lt;/tt&gt;&lt;/h3&gt;
+
+
+
+&lt;p&gt;
+We define append by recursion on the first list. The first two cases
+are similar to what one would do in Haskell (or vanilla Agda): if the first
+list is empty, we return the second one; and if it has a head and a tail,
+we cons the head and the result of the recursive call on the tail. But there
+is also a third case: &lt;tt&gt;List⁰&lt;/tt&gt; is a higher inductive type and that means
+that we need to explain how append acts on paths!
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;_++_ : (e f : List⁰ A) → List⁰ A
+[]        ++ f = f
+(x ∷ e)   ++ f = x ∷ (e ++ f)
+del x e i ++ f = ?
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+Because the function &lt;tt&gt;_++_&lt;/tt&gt; acts on elements of &lt;tt&gt;List⁰ A&lt;/tt&gt;,
+we need its first argument to be of type &lt;tt&gt;List⁰ A&lt;/tt&gt;. For this reason,
+the case mentions &lt;span class=inline-code&gt;del x e i&lt;/span&gt;: a value at position &lt;tt&gt;i&lt;/tt&gt;
+along the line of type &lt;span class=inline-code&gt;x ∷ e ≡ e&lt;/span&gt; described by &lt;tt&gt;del&lt;/tt&gt;.
+The type of the hole is &lt;tt&gt;List⁰ A&lt;/tt&gt; but it does not mean that we can put just
+about any expression in: there are side conditions!
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+These sides conditions can be understood from a very practical point of view:
+if &lt;tt&gt;i&lt;/tt&gt; gets instantiated to either &lt;tt&gt;0&lt;/tt&gt; or &lt;tt&gt;1&lt;/tt&gt;, the value
+of &lt;span class=inline-code&gt;del x e i ++ f&lt;/span&gt; should not depend on whether we
+evaluate &lt;tt&gt;_++_&lt;/tt&gt; first and then instantiate &lt;tt&gt;i&lt;/tt&gt;, or the converse.
+To guarantee that evaluation is confluent, Agda demands that both reductions
+lead to judgmentally equal values.
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+Understanding where these constraints come from, we can compute them. Remembering
+that if &lt;tt&gt;p&lt;/tt&gt; has type &lt;span class=inline-code&gt;a ≡ b&lt;/span&gt; then &lt;span class=inline-code&gt;p 0 = a&lt;/span&gt;
+and &lt;span class=inline-code&gt;p 1 = b&lt;/span&gt;:
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;i = 0 ⊢ del x e i ++ f    { del x e 0 = x ∷ e }
+      = x ∷ e     ++ f    { unfold _++_ }
+      = x ∷ (e ++ f)
+
+i = 1 ⊢ del x e i ++ f    { del x e 1 = e }
+      = e ++ f
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+So, the expression we pick to fill in the &lt;tt&gt;List⁰ A&lt;/tt&gt; will need to be
+equal to &lt;span class=inline-code&gt;x ∷ (e ++ f)&lt;/span&gt; if &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;0&lt;/tt&gt;
+and &lt;span class=inline-code&gt;e ++ f&lt;/span&gt; if &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;1&lt;/tt&gt;.
+Observing that &lt;span class=inline-code&gt;del x (e ++ f)&lt;/span&gt; has type
+&lt;span class=inline-code&gt;x ∷ (e ++ f) ≡ e ++ f&lt;/span&gt;, we pick the following
+solution:
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;del x e i ++ f = del x (e ++ f) i
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+Agda performs the checks we have mentioned earlier and sees that our
+solution is indeed compatible with the equations we already had. We
+now have a fully-defined function. Time to prove some of its properties!
+&lt;/p&gt;
+
+
+
+&lt;a name=&quot;ProvingThePropertiesOfAppend&quot; /&gt;
+&lt;h2&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#ProvingThePropertiesOfAppend&quot;&gt;#&lt;/a&gt; Proving the Properties of Append&lt;/h2&gt;
+
+
+
+&lt;p&gt;
+Just like for lists, we can prove that &lt;span class=inline-code&gt;[]&lt;/span&gt; is a neutral
+element for the binary operation &lt;span class=inline-code&gt;_++_&lt;/span&gt;. That is to say
+that both &lt;span class=inline-code&gt;[] ++_&lt;/span&gt; and &lt;span class=inline-code&gt;_++ []&lt;/span&gt;
+are the identity function. This should not be too much work but it will get us
+the opportunity to think about what happens in the &lt;span class=inline-code&gt;del&lt;/span&gt;
+case. We will then prove a more complex result: given that &lt;span class=inline-code&gt;del&lt;/span&gt;
+allows us to peel-off the head of a non-empty list, we should be able to prove
+that we can ``cancel&#39;&#39; append, that is to say that &lt;span class=inline-code&gt;e ++ f&lt;/span&gt;
+is equal to &lt;span class=inline-code&gt;f&lt;/span&gt;.
+&lt;/p&gt;
+
+
+
+&lt;a name=&quot;LeftAndRightIdentities&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#LeftAndRightIdentities&quot;&gt;#&lt;/a&gt; Left and Right Identities&lt;/h3&gt;
+
+
+
+&lt;p&gt;
+The left identity holds by computation: the definition of append itself declares
+that &lt;span class=inline-code&gt;[] ++ e&lt;/span&gt; should reduce to &lt;span class=inline-code&gt;e&lt;/span&gt;.
+We can use &lt;span class=inline-code&gt;refl&lt;/span&gt; to prove the goal like we would do in
+vanilla Agda. The main difference here being that &lt;span class=inline-code&gt;refl&lt;/span&gt; is
+not a constructor: it is the constant function which given any value in the interval
+returns &lt;span class=inline-code&gt;e&lt;/span&gt;.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;++-idˡ : (e : List⁰ A) → [] ++ e ≡ e
+++-idˡ e = refl
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+The right identity requires a bit more work: given that append is defined by
+recursion on its first argument, we need to proceed by induction on it. The first
+two cases are what you would expect from the proof of
+&lt;a href=&quot;https://agda.github.io/agda-stdlib/v0.17/Data.List.Properties.html#4357&quot;&gt;
+a similar result on lists&lt;/a&gt;.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;++-idʳ : (e : List⁰ A) → e ++ [] ≡ e
+++-idʳ []          = refl
+++-idʳ (x ∷ e)     = cong (x ∷_) (++-idʳ e)
+++-idʳ (del x e i) = ?
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+The last case is not a lot more complicated, at least at first glance:
+&lt;ul&gt;&lt;li&gt;the left hand side of the equality goal is &lt;span class=inline-code&gt;del x e i ++ []&lt;/span&gt;
+which reduces to &lt;span class=inline-code&gt;del x (e ++ []) i&lt;/span&gt; by definition of
+append&lt;/li&gt;
+&lt;li&gt;the right hand side is &lt;span class=inline-code&gt;del x e i&lt;/span&gt;&lt;/li&gt;&lt;/ul&gt;
+A natural candidate for this equality is to use the induction hypothesis to
+obtain a proof that &lt;span class=inline-code&gt;e ++ [] ≡ e&lt;/span&gt; and use congruence
+to apply the function &lt;span class=inline-code&gt;λ e → del x e i&lt;/span&gt; to each side.
+However remember that we need to check that this definition is compatible with
+the other clauses when &lt;tt&gt;i&lt;/tt&gt; becomes either &lt;tt&gt;0&lt;/tt&gt; or &lt;tt&gt;1&lt;/tt&gt;.
+This gives us the following constraints:
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;i = 0 ⊢ ++-idʳ (del x e i)       { del x e 0 = x ∷ e }
+      = ++-idʳ (x ∷ e)           { unfold ++-idʳ }
+      = cong (x ∷_) (++-idʳ e)
+
+i = 1 ⊢ ++-idʳ (del x e i)       { del x e 1 = e }
+      = ++-idʳ e
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+We can easily verify that &lt;span class=inline-code&gt;cong (λ e → del x e i) (++-idʳ e)&lt;/span&gt;
+does collapse to the right expressions when we set &lt;tt&gt;i&lt;/tt&gt; to either &lt;tt&gt;0&lt;/tt&gt; or
+&lt;tt&gt;1&lt;/tt&gt; thanks in part to the fact that &lt;span class=inline-code&gt;cong (λ x → x) p&lt;/span&gt;
+is definitionally equal to &lt;span class=inline-code&gt;p&lt;/span&gt;. This leads us to the following
+completed definition:
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;++-idʳ : (e : List⁰ A) → e ++ [] ≡ e
+++-idʳ []          = refl
+++-idʳ (x ∷ e)     = cong (x ∷_) (++-idʳ e)
+++-idʳ (del x e i) = cong (λ e → del x e i) (++-idʳ e)
+&lt;/p&gt;
+
+
+
+&lt;p&gt;We can now move on to a more difficult proof.&lt;/p&gt;
+
+
+
+&lt;a name=&quot;CancellingAppend&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#CancellingAppend&quot;&gt;#&lt;/a&gt; Cancelling append&lt;/h3&gt;
+
+
+
+&lt;p&gt;
+Given that a non-empty list is declared equal to its tail it should be possible
+to prove that if we append two lists, the result is equal to the second one alone.
+The intuition being that we can repeatedly use &lt;span class=inline-code&gt;del&lt;/span&gt; to
+consume all of the elements in the first list. Formally, this gives us the type:
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;dels : (e f : List⁰ A) → e ++ f ≡ f
+&lt;/p&gt;
+
+
+
+&lt;p&gt;Remarking once more that append is defined by recursion on its first argument,
+we proceed by induction on it. The first case is easily dealt with: it is precisely
+the left identity law for append which we know holds definitionally. For uniformity
+with the upcoming case, we eta-expand &lt;span class=inline-code&gt;refl&lt;/span&gt; and write &lt;a id=&quot;reftop1&quot; href=&quot;#refbot1&quot;&gt;[1]&lt;/a&gt;:
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;dels [] f j = f
+&lt;/p&gt;
+
+
+
+&lt;p&gt;The second clause demands an equality proof between
+&lt;span class=inline-code&gt;x ∷ e ++ f&lt;/span&gt; on the one hand and
+&lt;span class=inline-code&gt;f&lt;/span&gt; on the other. We could use
+transitivity to combine a call to &lt;span class=inline-code&gt;del&lt;/span&gt;
+taking us from &lt;span class=inline-code&gt;x ∷ e ++ f&lt;/span&gt; to
+&lt;span class=inline-code&gt;e ++ f&lt;/span&gt; and then use the induction
+hypothesis to conclude. However it turns out that we can
+find a more compact proof by defining the path explicitly.
+We write:
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;dels (x ∷ e) f j = del x (dels e f j) j
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+We let the reader check that when &lt;tt&gt;j&lt;/tt&gt; is &lt;tt&gt;0&lt;/tt&gt; we
+do get &lt;span class=inline-code&gt;x ∷ e ++ f&lt;/span&gt; whilst making &lt;tt&gt;j&lt;/tt&gt;
+equal to &lt;tt&gt;1&lt;/tt&gt; takes us to &lt;span class=inline-code&gt;f&lt;/span&gt;.
+We are now left with the last clause. We need a term of type
+&lt;span class=inline-code&gt;del x e i ++ f ≡ f&lt;/span&gt; which satisfies the
+usual two side conditions stating that when we make &lt;tt&gt;i&lt;/tt&gt;
+either &lt;tt&gt;0&lt;/tt&gt; or &lt;tt&gt;1&lt;/tt&gt;, it is compatible with the previous
+clauses.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;i = 0 ⊢ dels (del x e i) f j       { del x e 0 = x ∷ e }
+      = dels (x ∷ e) f j           { unfold dels }
+      = del x (dels e f j) j
+
+i = 1 ⊢ dels (del x e i) f j       { del x e 1 = e }
+      = dels e f j
+&lt;/p&gt;
+
+
+
+&lt;p&gt;It is hard to give an intuition for the jump from these constraints
+to the solution. One thing we can notice is that &lt;span class=inline-code&gt;dels e f j&lt;/span&gt;
+is the right hand side of the equality proved by &lt;span class=inline-code&gt;del x (dels e f j)&lt;/span&gt;.
+So we need to somehow get a term which is equal &lt;span class=inline-code&gt;del x (dels e f j) j&lt;/span&gt;
+when &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;0&lt;/tt&gt; and collapses to &lt;span class=inline-code&gt;del x (dels e f j)&lt;/span&gt;&#39;s
+right hand side when &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;1&lt;/tt&gt;.&lt;/p&gt;
+
+
+
+&lt;p&gt;
+The key idea in cubical Agda which will help us here is the fact that
+&lt;a href=&quot;https://agda.readthedocs.io/en/latest/language/cubical.html#the-interval-and-path-types&quot;&gt;
+elements of the interval for a De Morgan algebra&lt;/a&gt;. We can use the interval
+value &lt;span class=inline-code&gt;i ∨ j&lt;/span&gt;: when &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;0&lt;/tt&gt;, we get &lt;tt&gt;j&lt;/tt&gt;
+back and when &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;1&lt;/tt&gt;, &lt;span class=inline-code&gt;i ∨ j&lt;/span&gt; collapses to &lt;tt&gt;1&lt;/tt&gt;.
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+The reader can check that &lt;span class=inline-code&gt;λ j → del x (dels e f j) (i ∨ j)&lt;/span&gt;
+proves the equality &lt;span class=inline-code&gt;del x e i ++ f ≡ f&lt;/span&gt; and that it reduces
+to the right expressions when &lt;tt&gt;i&lt;/tt&gt; is set to either of the interval&#39;s extremities.
+Putting everything together, we get the following definition:
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;dels : (e f : List⁰ A) → e ++ f ≡ f
+dels []          f j = f
+dels (x ∷ e)     f j = del x (dels e f j) j
+dels (del x e i) f j = del x (dels e f j) (i ∨ j)
+&lt;/p&gt;
+
+
+
+&lt;a name=&quot;Conclusion&quot; /&gt;
+&lt;h2&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Conclusion&quot;&gt;#&lt;/a&gt; Conclusion&lt;/h2&gt;
+
+
+
+&lt;p&gt;
+It took me about ten hours total to formalise the content of this post, most
+of it spent on &lt;span class=inline-code&gt;dels&lt;/span&gt;. Once I understood the origin of
+the side conditions one has to deal with in the cases involving
+&lt;span class=inline-code&gt;del x e i&lt;/span&gt;, it finally clicked and things felt easier.
+I hope this post makes the confluence imperative behind these side conditions
+clear and really drills down the importance of computing them.
+&lt;/p&gt;
+
+
+
+&lt;p&gt;I would like to conclude this post by thanking
+&lt;a href=&quot;http://cs.ru.nl/~nweide/&quot;&gt;Nils van der Weide&lt;/a&gt; and
+&lt;a href=&quot;https://cs.ru.nl/~dfrumin/&quot;&gt;Dan Frumin&lt;/a&gt; for sharing my misery when
+banging my head against these simple-looking problems as well as the insightful
+discussions that ensued.
+&lt;/p&gt;
+
+&lt;a name=&quot;Footnotes&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Footnotes&quot;&gt;#&lt;/a&gt; Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;
+Remember that an equality proof &lt;span class=inline-code&gt;x ≡ y&lt;/span&gt; in &lt;tt&gt;A&lt;/tt&gt; is a function
+from the interval to &lt;tt&gt;A&lt;/tt&gt; which evaluates to &lt;span class=inline-code&gt;x&lt;/span&gt; at &lt;tt&gt;0&lt;/tt&gt;
+and &lt;span class=inline-code&gt;y&lt;/span&gt; at &lt;tt&gt;1&lt;/tt&gt;. The proof &lt;span class=inline-code&gt;refl&lt;/span&gt;
+of &lt;span class=inline-code&gt;x ≡ x&lt;/span&gt; corresponds to the constant function
+&lt;span class=inline-code&gt;λ j → x&lt;/span&gt;.&lt;/div&gt;&lt;/p&gt;&lt;/div&gt;</description><guid isPermaLink="true">http://blog.gallais.org/first-cubical-experiment.html</guid><pubDate>Wed,  6 Mar 2019 13:37:00 UTC</pubDate></item><item><title>Instrumenting Total Parsers Written in agdarsec</title><link>http://blog.gallais.org/instrumenting-agdarsec.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Instrumenting Total Parsers Written in agdarsec&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://www.github.com/gallais/agdarsec&quot;&gt;agdarsec&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;https://gallais.github.io/agdarsec/&quot;&gt;documentation&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;
 
 
@@ -9,7 +395,8 @@ combinators themselves.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;The(Idealized)TypeOfParsers&quot; /&gt;&lt;h2&gt;The (Idealized) Type of Parsers&lt;/h2&gt;
+&lt;a name=&quot;The(Idealized)TypeOfParsers&quot; /&gt;
+&lt;h2&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#The(Idealized)TypeOfParsers&quot;&gt;#&lt;/a&gt; The (Idealized) Type of Parsers&lt;/h2&gt;
 
 
 
@@ -21,7 +408,8 @@ user more configuration options.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;ParametersOfTheParser.&quot; /&gt;&lt;h3&gt;Parameters of the Parser.&lt;/h3&gt;
+&lt;a name=&quot;ParametersOfTheParser.&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#ParametersOfTheParser.&quot;&gt;#&lt;/a&gt; Parameters of the Parser.&lt;/h3&gt;
 
 
 
@@ -66,7 +454,8 @@ the expression being parsed) quite hard. This is where instrumentation comes in.
 
 
 
-&lt;a name=&quot;InstrumentingAParser&quot; /&gt;&lt;h2&gt;Instrumenting a Parser&lt;/h2&gt;
+&lt;a name=&quot;InstrumentingAParser&quot; /&gt;
+&lt;h2&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#InstrumentingAParser&quot;&gt;#&lt;/a&gt; Instrumenting a Parser&lt;/h2&gt;
 
 
 
@@ -94,7 +483,8 @@ new &lt;tt&gt;recordToken&lt;/tt&gt; to remember the what was obtained.&lt;/p&gt
 
 
 
-&lt;a name=&quot;PositionTracking&quot; /&gt;&lt;h3&gt;Position Tracking&lt;/h3&gt;
+&lt;a name=&quot;PositionTracking&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#PositionTracking&quot;&gt;#&lt;/a&gt; Position Tracking&lt;/h3&gt;
 
 
 
@@ -141,7 +531,8 @@ more accurately by returning the position at the point of failure.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;DistinguishingSoftAndHardFailures&quot; /&gt;&lt;h3&gt;Distinguishing Soft and Hard Failures&lt;/h3&gt;
+&lt;a name=&quot;DistinguishingSoftAndHardFailures&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#DistinguishingSoftAndHardFailures&quot;&gt;#&lt;/a&gt; Distinguishing Soft and Hard Failures&lt;/h3&gt;
 
 
 
@@ -232,7 +623,8 @@ a heuristics to decide which error to propagate.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;Conclusion&quot; /&gt;&lt;h2&gt;Conclusion&lt;/h2&gt;
+&lt;a name=&quot;Conclusion&quot; /&gt;
+&lt;h2&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Conclusion&quot;&gt;#&lt;/a&gt; Conclusion&lt;/h2&gt;
 
 
 
@@ -246,7 +638,8 @@ in Agda.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;Acknowledgements&quot; /&gt;&lt;h3&gt;Acknowledgements&lt;/h3&gt;
+&lt;a name=&quot;Acknowledgements&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Acknowledgements&quot;&gt;#&lt;/a&gt; Acknowledgements&lt;/h3&gt;
 
 
 
@@ -257,7 +650,8 @@ their port of the changes to the Idris version of the library
 (&lt;a href=&quot;https://github.com/gallais/idris-tparsec&quot;&gt;idris-tparsec&lt;/a&gt;).
 &lt;/p&gt;
 
-&lt;h3&gt;Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;For more details, read the &lt;a href=&quot;https://gallais.github.io/pdf/agdarsec18.pdf&quot;&gt;paper&lt;/a&gt;
+&lt;a name=&quot;Footnotes&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Footnotes&quot;&gt;#&lt;/a&gt; Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;For more details, read the &lt;a href=&quot;https://gallais.github.io/pdf/agdarsec18.pdf&quot;&gt;paper&lt;/a&gt;
 discussing the first version of the library.&lt;/div&gt;&lt;/p&gt;&lt;/div&gt;</description><guid isPermaLink="true">http://blog.gallais.org/instrumenting-agdarsec.html</guid><pubDate>Fri, 13 Jul 2018 13:37:00 UTC</pubDate></item><item><title>Three Tricks to make Termination Obvious</title><link>http://blog.gallais.org/termination-tricks.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Three Tricks to make Termination Obvious&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;http://homepages.inf.ed.ac.uk/wadler/topics/language-design.html#prettier&quot;&gt;Wadler&#39;s Prettier Printer&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;https://github.com/gallais/potpourri/tree/master/agda/prettier&quot;&gt;Prettier Printer in Agda&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;
 
@@ -280,7 +674,8 @@ once the maximum width of the final document is known.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;UsingVecRatherThanList&quot; /&gt;&lt;h3&gt;Using Vec rather than List&lt;/h3&gt;
+&lt;a name=&quot;UsingVecRatherThanList&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#UsingVecRatherThanList&quot;&gt;#&lt;/a&gt; Using Vec rather than List&lt;/h3&gt;
 
 
 
@@ -325,7 +720,8 @@ replacement for it with &lt;span class=inline-code&gt;Data.Vec.fromList&lt;/span
 
 
 
-&lt;a name=&quot;CPS-transformAlgorithmsUsingQueuesToStoreFutureWork&quot; /&gt;&lt;h3&gt;CPS-transform algorithms using queues to store future work&lt;/h3&gt;
+&lt;a name=&quot;CPS-transformAlgorithmsUsingQueuesToStoreFutureWork&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#CPS-transformAlgorithmsUsingQueuesToStoreFutureWork&quot;&gt;#&lt;/a&gt; CPS-transform algorithms using queues to store future work&lt;/h3&gt;
 
 
 
@@ -390,7 +786,8 @@ list to collect all the leaves.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;UseSized-typesToMakeHigher-orderFunctionsUsable&quot; /&gt;&lt;h3&gt;Use sized-types to make higher-order functions usable&lt;/h3&gt;
+&lt;a name=&quot;UseSized-typesToMakeHigher-orderFunctionsUsable&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#UseSized-typesToMakeHigher-orderFunctionsUsable&quot;&gt;#&lt;/a&gt; Use sized-types to make higher-order functions usable&lt;/h3&gt;
 
 
 
@@ -468,7 +865,8 @@ occurence passed to &lt;span class=inline-code&gt;showFill&lt;/span&gt;, it has 
 
 
 
-&lt;a name=&quot;Conclusion&quot; /&gt;&lt;h3&gt;Conclusion&lt;/h3&gt;
+&lt;a name=&quot;Conclusion&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Conclusion&quot;&gt;#&lt;/a&gt; Conclusion&lt;/h3&gt;
 
 
 
@@ -484,7 +882,8 @@ transformation&lt;/a&gt;.
 &lt;/p&gt;
 
 
-&lt;h3&gt;Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;Here we are actually using &lt;span class=inline-code&gt;ℕ&lt;/span&gt;
+&lt;a name=&quot;Footnotes&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Footnotes&quot;&gt;#&lt;/a&gt; Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;Here we are actually using &lt;span class=inline-code&gt;ℕ&lt;/span&gt;
 rather than &lt;span class=inline-code&gt;Int&lt;/span&gt; because these values
 are always positive anyways so we might as well say so in the
 type!&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot2&quot; href=&quot;#reftop2&quot;&gt;[2]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;For more on sized and dependent types, cf. Andreas Abel&#39;s
@@ -502,7 +901,8 @@ used to tidy up some definitions.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;Introduction:ScopeAndLambdaLifting&quot; /&gt;&lt;h3&gt;Introduction: Scope and lambda lifting&lt;/h3&gt;
+&lt;a name=&quot;Introduction:ScopeAndLambdaLifting&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Introduction:ScopeAndLambdaLifting&quot;&gt;#&lt;/a&gt; Introduction: Scope and lambda lifting&lt;/h3&gt;
 
 
 
@@ -555,7 +955,8 @@ check = indeed
 
 
 
-&lt;a name=&quot;AMoreComplexExample&quot; /&gt;&lt;h3&gt;A more complex example&lt;/h3&gt;
+&lt;a name=&quot;AMoreComplexExample&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#AMoreComplexExample&quot;&gt;#&lt;/a&gt; A more complex example&lt;/h3&gt;
 
 
 
@@ -652,7 +1053,8 @@ The same tests as before hold but I find the type more readable:&lt;/p&gt;
 test-reduce = refl , refl&lt;/p&gt;
 
 
-&lt;h3&gt;Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;
+&lt;a name=&quot;Footnotes&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Footnotes&quot;&gt;#&lt;/a&gt; Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;
 This is only a first approximation. It is
 naturally possible to have a slightly more subtle approach and to only
 prepend the variables which appear free in the type and body of the
@@ -698,8 +1100,8 @@ and so on with all the possible nestings imaginable.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;0&quot; /&gt;
-&lt;h3&gt;The definition of &lt;span class=inline-code&gt;Curry&lt;/span&gt; and various instances&lt;/h3&gt;
+&lt;a name=&quot;section0&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section0&quot;&gt;#&lt;/a&gt; The definition of &lt;span class=inline-code&gt;Curry&lt;/span&gt; and various instances&lt;/h3&gt;
 
 
 
@@ -759,8 +1161,8 @@ curryPair A B =
 
 
 
-&lt;a name=&quot;1&quot; /&gt;
-&lt;h3&gt;Using &lt;span class=inline-code&gt;REWRITE&lt;/span&gt; to guide the typechecker&lt;/h3&gt;
+&lt;a name=&quot;section1&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section1&quot;&gt;#&lt;/a&gt; Using &lt;span class=inline-code&gt;REWRITE&lt;/span&gt; to guide the typechecker&lt;/h3&gt;
 
 
 
@@ -890,8 +1292,8 @@ of reifying the domain of the function we want to curry. Annoying.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;0&quot; /&gt;
-&lt;h2&gt;&lt;center&gt;Canonical Structures to the rescue!&lt;/center&gt;&lt;/h2&gt;
+&lt;a name=&quot;section0&quot; /&gt;
+&lt;h2&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section0&quot;&gt;#&lt;/a&gt; &lt;center&gt;Canonical Structures to the rescue!&lt;/center&gt;&lt;/h2&gt;
 
 
 
@@ -905,7 +1307,8 @@ going to use it to generate the right sort of currying.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;TheClassOfDomainsWhichCanBeCurried&quot; /&gt;&lt;h3&gt;The Class of domains which can be curried&lt;/h3&gt;
+&lt;a name=&quot;TheClassOfDomainsWhichCanBeCurried&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#TheClassOfDomainsWhichCanBeCurried&quot;&gt;#&lt;/a&gt; The Class of domains which can be curried&lt;/h3&gt;
 
 
 
@@ -982,8 +1385,8 @@ Import Currying.theory.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;1&quot; /&gt;
-&lt;h3&gt;The Canonical Structures associated to &lt;span class=inline-code&gt;Currying.type&lt;/span&gt;&lt;/h3&gt;
+&lt;a name=&quot;section1&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section1&quot;&gt;#&lt;/a&gt; The Canonical Structures associated to &lt;span class=inline-code&gt;Currying.type&lt;/span&gt;&lt;/h3&gt;
 
 
 
@@ -1027,7 +1430,8 @@ a defaulting instance which does not do anything as witnessed by its
 
 
 
-&lt;a name=&quot;ConcludingExamples&quot; /&gt;&lt;h3&gt;Concluding Examples&lt;/h3&gt;
+&lt;a name=&quot;ConcludingExamples&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#ConcludingExamples&quot;&gt;#&lt;/a&gt; Concluding Examples&lt;/h3&gt;
 
 
 
@@ -1084,7 +1488,8 @@ for a mechanised approach.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;TheILLFragmentWeAreInterestedIn.&quot; /&gt;&lt;h3&gt;The ILL fragment we are interested in.&lt;/h3&gt;
+&lt;a name=&quot;TheILLFragmentWeAreInterestedIn.&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#TheILLFragmentWeAreInterestedIn.&quot;&gt;#&lt;/a&gt; The ILL fragment we are interested in.&lt;/h3&gt;
 
 
 
@@ -1113,7 +1518,8 @@ other. This leads us to our first maxim:&lt;/p&gt;
 
 
 
-&lt;a name=&quot;IfIt&#39;sTooComplicated,SolveAMoreGeneralProblem!&quot; /&gt;&lt;h3&gt;If it&#39;s too complicated, solve a more general problem!&lt;/h3&gt;
+&lt;a name=&quot;IfIt&#39;sTooComplicated,SolveAMoreGeneralProblem!&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#IfIt&#39;sTooComplicated,SolveAMoreGeneralProblem!&quot;&gt;#&lt;/a&gt; If it&#39;s too complicated, solve a more general problem!&lt;/h3&gt;
 
 
 
@@ -1189,7 +1595,8 @@ obstacle teaches us our second principle:&lt;/p&gt;
 
 
 
-&lt;a name=&quot;NeverDitchTheStructureYouMightWantToUseLaterOn!&quot; /&gt;&lt;h3&gt;Never ditch the structure you might want to use later on!&lt;/h3&gt;
+&lt;a name=&quot;NeverDitchTheStructureYouMightWantToUseLaterOn!&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#NeverDitchTheStructureYouMightWantToUseLaterOn!&quot;&gt;#&lt;/a&gt; Never ditch the structure you might want to use later on!&lt;/h3&gt;
 
 
 
@@ -1229,7 +1636,8 @@ Hence our last slogan:&lt;/p&gt;
 
 
 
-&lt;a name=&quot;NeverDoMoreThanYouNeedTo!&quot; /&gt;&lt;h3&gt;Never do more than you need to!&lt;/h3&gt;
+&lt;a name=&quot;NeverDoMoreThanYouNeedTo!&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#NeverDoMoreThanYouNeedTo!&quot;&gt;#&lt;/a&gt; Never do more than you need to!&lt;/h3&gt;
 
 
 
@@ -1245,7 +1653,8 @@ insert left rules wherever needed.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;Conclusion&quot; /&gt;&lt;h3&gt;Conclusion&lt;/h3&gt;
+&lt;a name=&quot;Conclusion&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Conclusion&quot;&gt;#&lt;/a&gt; Conclusion&lt;/h3&gt;
 
 
 
@@ -1263,7 +1672,8 @@ commutative monoid as well as a more specialised one using Nisse&#39;s
 &lt;a href=&quot;http://www.cse.chalmers.se/~nad/publications/danielsson-bag-equivalence.html&quot;&gt;
 Bag Equivalence via a Proof-Relevant Membership Relation&lt;/a&gt;.&lt;/p&gt;
 
-&lt;h3&gt;Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;Liam&#39;s system is inspired by linear logic extended with
+&lt;a name=&quot;Footnotes&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Footnotes&quot;&gt;#&lt;/a&gt; Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;Liam&#39;s system is inspired by linear logic extended with
 explicit contraction and weakening.&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot2&quot; href=&quot;#reftop2&quot;&gt;[2]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;I
 was not aware of his work at the time I wrote the procedure presented
 here and did not pay much attention to the way I formulated ILL because
@@ -1289,7 +1699,8 @@ various projects that benefited from it.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;BabySteps&quot; /&gt;&lt;h3&gt;Baby steps&lt;/h3&gt;
+&lt;a name=&quot;BabySteps&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#BabySteps&quot;&gt;#&lt;/a&gt; Baby steps&lt;/h3&gt;
 
 
 
@@ -1310,7 +1721,8 @@ really simple .travis.yml file&lt;/a&gt; to the tree.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;UsingGithubTokens&quot; /&gt;&lt;h3&gt;Using Github tokens&lt;/h3&gt;
+&lt;a name=&quot;UsingGithubTokens&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#UsingGithubTokens&quot;&gt;#&lt;/a&gt; Using Github tokens&lt;/h3&gt;
 
 
 
@@ -1322,8 +1734,8 @@ pages&lt;/a&gt;.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;0&quot; /&gt;
-&lt;h4&gt;Building &lt;a href=&quot;http://gallais.org&quot;&gt;this very website&lt;/a&gt;&lt;/h4&gt;
+&lt;a name=&quot;section0&quot; /&gt;
+&lt;h4&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section0&quot;&gt;#&lt;/a&gt; Building &lt;a href=&quot;http://gallais.org&quot;&gt;this very website&lt;/a&gt;&lt;/h4&gt;
 
 
 
@@ -1354,8 +1766,8 @@ repository. To do so, one needs to generate personal access tokens
 
 
 
-&lt;a name=&quot;1&quot; /&gt;
-&lt;h4&gt;&lt;a href=&quot;http://impega.github.io/reciptacle&quot;&gt;Publishing recipes&lt;/a&gt; with a little bit of bash magic&lt;/h4&gt;
+&lt;a name=&quot;section1&quot; /&gt;
+&lt;h4&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section1&quot;&gt;#&lt;/a&gt; &lt;a href=&quot;http://impega.github.io/reciptacle&quot;&gt;Publishing recipes&lt;/a&gt; with a little bit of bash magic&lt;/h4&gt;
 
 
 
@@ -1379,8 +1791,8 @@ in our various scripts.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;2&quot; /&gt;
-&lt;h4&gt;&lt;a href=&quot;https://agda.github.io/agda-stdlib/&quot;&gt;Documentation for Agda&#39;s
+&lt;a name=&quot;section2&quot; /&gt;
+&lt;h4&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section2&quot;&gt;#&lt;/a&gt; &lt;a href=&quot;https://agda.github.io/agda-stdlib/&quot;&gt;Documentation for Agda&#39;s
 standard library&lt;/a&gt;&lt;/h4&gt;
 
 
@@ -1392,7 +1804,8 @@ travis generating the standard library&#39;s documentation.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;EncryptingDropboxCredentials&quot; /&gt;&lt;h3&gt;Encrypting Dropbox credentials&lt;/h3&gt;
+&lt;a name=&quot;EncryptingDropboxCredentials&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#EncryptingDropboxCredentials&quot;&gt;#&lt;/a&gt; Encrypting Dropbox credentials&lt;/h3&gt;
 
 
 
@@ -1408,7 +1821,8 @@ repository.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;BuildingAStatically-linkedAgdaExecutable&quot; /&gt;&lt;h4&gt;Building a statically-linked Agda executable&lt;/h4&gt;
+&lt;a name=&quot;BuildingAStatically-linkedAgdaExecutable&quot; /&gt;
+&lt;h4&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#BuildingAStatically-linkedAgdaExecutable&quot;&gt;#&lt;/a&gt; Building a statically-linked Agda executable&lt;/h4&gt;
 
 
 
@@ -1454,7 +1868,8 @@ I want. If someone knows &lt;i&gt;the right way&lt;/i&gt; to do it, please do sh
 
 
 
-&lt;a name=&quot;GetTravisToBuildYourDrafts!&quot; /&gt;&lt;h3&gt;Get Travis to build your drafts!&lt;/h3&gt;
+&lt;a name=&quot;GetTravisToBuildYourDrafts!&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#GetTravisToBuildYourDrafts!&quot;&gt;#&lt;/a&gt; Get Travis to build your drafts!&lt;/h3&gt;
 
 
 
@@ -1479,7 +1894,8 @@ that. If you have suggestions with respect to alternative hosting
 solutions making it easier for other people&#39;s scripts to pull the
 tarballs, &lt;a href=&quot;/contact.html&quot;&gt;&lt;b&gt;please contact me&lt;/b&gt;&lt;/a&gt;!&lt;/p&gt;
 
-&lt;h3&gt;Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;You should not conclude anything about &lt;span class=inline-code&gt;parsec&lt;/span&gt; from
+&lt;a name=&quot;Footnotes&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Footnotes&quot;&gt;#&lt;/a&gt; Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;You should not conclude anything about &lt;span class=inline-code&gt;parsec&lt;/span&gt; from
 that: I had no prior experience in parsing so I had a lot to learn
 and spent quite some time trying various libraries and parser generators
 before finally settling for &lt;span class=inline-code&gt;parsec&lt;/span&gt;. Which does the job as you
@@ -1512,7 +1928,8 @@ removing some of them from the cycle.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;FegarasAndSheard&#39;sSolution&quot; /&gt;&lt;h3&gt;Fegaras and Sheard&#39;s solution&lt;/h3&gt;
+&lt;a name=&quot;FegarasAndSheard&#39;sSolution&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#FegarasAndSheard&#39;sSolution&quot;&gt;#&lt;/a&gt; Fegaras and Sheard&#39;s solution&lt;/h3&gt;
 
 
 
@@ -1546,7 +1963,8 @@ toStream xs@(CRec x r) = x : toStream (r xs)&lt;/p&gt;
 
 
 
-&lt;a name=&quot;TheLimitationsOfThisRepresentation&quot; /&gt;&lt;h3&gt;The limitations of this representation&lt;/h3&gt;
+&lt;a name=&quot;TheLimitationsOfThisRepresentation&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#TheLimitationsOfThisRepresentation&quot;&gt;#&lt;/a&gt; The limitations of this representation&lt;/h3&gt;
 
 
 
@@ -1559,7 +1977,8 @@ consequence, the encoding lacks canonicity.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;ThereIsNoGuaranteeOnTheWayPointersAreUsed(ifAtAll)&quot; /&gt;&lt;h3&gt;There is no guarantee on the way pointers are used (if at all)&lt;/h3&gt;
+&lt;a name=&quot;ThereIsNoGuaranteeOnTheWayPointersAreUsed(ifAtAll)&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#ThereIsNoGuaranteeOnTheWayPointersAreUsed(ifAtAll)&quot;&gt;#&lt;/a&gt; There is no guarantee on the way pointers are used (if at all)&lt;/h3&gt;
 
 
 
@@ -1597,7 +2016,8 @@ of the cycle without being rejected by the typechecker:&lt;/p&gt;
 
 
 
-&lt;a name=&quot;UsefulFunctionsCannotBeWrittenWithoutUnfoldingTheCycle&quot; /&gt;&lt;h3&gt;Useful functions cannot be written without unfolding the
+&lt;a name=&quot;UsefulFunctionsCannotBeWrittenWithoutUnfoldingTheCycle&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#UsefulFunctionsCannotBeWrittenWithoutUnfoldingTheCycle&quot;&gt;#&lt;/a&gt; Useful functions cannot be written without unfolding the
 cycle&lt;/h3&gt;
 
 
@@ -1626,7 +2046,8 @@ problems: the type system!&lt;/p&gt;
 
 
 
-&lt;a name=&quot;CallingTheTypeSystemToTheRescue.&quot; /&gt;&lt;h3&gt;Calling the type system to the rescue.&lt;/h3&gt;
+&lt;a name=&quot;CallingTheTypeSystemToTheRescue.&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#CallingTheTypeSystemToTheRescue.&quot;&gt;#&lt;/a&gt; Calling the type system to the rescue.&lt;/h3&gt;
 
 
 
@@ -1826,7 +2247,8 @@ equality on these cyclic structures. Exciting perspectives.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;Conclusion&quot; /&gt;&lt;h3&gt;Conclusion&lt;/h3&gt;
+&lt;a name=&quot;Conclusion&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Conclusion&quot;&gt;#&lt;/a&gt; Conclusion&lt;/h3&gt;
 
 
 
@@ -1846,7 +2268,8 @@ which may be nested. It is then necessary to fall back to a
 setup managing syntax with binding.&lt;/p&gt;
 
 
-&lt;h3&gt;Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;We consider here that we only work in the inductive
+&lt;a name=&quot;Footnotes&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Footnotes&quot;&gt;#&lt;/a&gt; Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;We consider here that we only work in the inductive
 fragment of the language. It is obviously impossible to enforce in
 Haskell.&lt;/div&gt;&lt;/p&gt;&lt;/div&gt;</description><guid isPermaLink="true">http://blog.gallais.org/cyclic-list-purely.html</guid><pubDate>Tue, 12 Aug 2014 13:37:00 UTC</pubDate></item><item><title>Non-regular Parameters are OK</title><link>http://blog.gallais.org/non-regular-parameters.html</link><description>&lt;head&gt; &lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot;       href=&quot;http://www.gallais.org/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Non-regular Parameters are OK&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;http://www.lix.polytechnique.fr/~barras/habilitation/&quot;&gt;Barras&#39; habil. thesis&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;code/NonRegularParameter/NonRegular.agda&quot;&gt;Raw Agda&lt;/a&gt;&lt;/li&gt;
@@ -1864,7 +2287,8 @@ make sense.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;QuickDefinition&quot; /&gt;&lt;h3&gt;Quick definition&lt;/h3&gt;
+&lt;a name=&quot;QuickDefinition&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#QuickDefinition&quot;&gt;#&lt;/a&gt; Quick definition&lt;/h3&gt;
 
 
 
@@ -1908,7 +2332,8 @@ of being inconsistent...&lt;/p&gt;
 
 
 
-&lt;a name=&quot;TheEncoding&quot; /&gt;&lt;h3&gt;The encoding&lt;/h3&gt;
+&lt;a name=&quot;TheEncoding&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#TheEncoding&quot;&gt;#&lt;/a&gt; The encoding&lt;/h3&gt;
 
 
 
@@ -1922,7 +2347,8 @@ file&lt;/a&gt;.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;WhatOneWouldWriteInAgda&quot; /&gt;&lt;h4&gt;What one would write in Agda&lt;/h4&gt;
+&lt;a name=&quot;WhatOneWouldWriteInAgda&quot; /&gt;
+&lt;h4&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#WhatOneWouldWriteInAgda&quot;&gt;#&lt;/a&gt; What one would write in Agda&lt;/h4&gt;
 
 
 
@@ -1942,7 +2368,8 @@ fresh ones &lt;a id=&quot;reftop2&quot; href=&quot;#refbot2&quot;&gt;[2]&lt;/a&g
 
 
 
-&lt;a name=&quot;ANaïveTranslationUsingLargeIndexes&quot; /&gt;&lt;h4&gt;A naïve translation using large indexes&lt;/h4&gt;
+&lt;a name=&quot;ANaïveTranslationUsingLargeIndexes&quot; /&gt;
+&lt;h4&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#ANaïveTranslationUsingLargeIndexes&quot;&gt;#&lt;/a&gt; A naïve translation using large indexes&lt;/h4&gt;
 
 
 
@@ -1971,7 +2398,8 @@ it&#39;d better be a small one. This is precisely what the encoding does.&lt;/p&
 
 
 
-&lt;a name=&quot;Barras&#39;Encoding&quot; /&gt;&lt;h4&gt;Barras&#39; encoding&lt;/h4&gt;
+&lt;a name=&quot;Barras&#39;Encoding&quot; /&gt;
+&lt;h4&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Barras&#39;Encoding&quot;&gt;#&lt;/a&gt; Barras&#39; encoding&lt;/h4&gt;
 
 
 
@@ -2028,7 +2456,8 @@ to convince Agda that everything is fine.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;Conclusion&quot; /&gt;&lt;h3&gt;Conclusion&lt;/h3&gt;
+&lt;a name=&quot;Conclusion&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Conclusion&quot;&gt;#&lt;/a&gt; Conclusion&lt;/h3&gt;
 
 
 
@@ -2039,7 +2468,8 @@ mentioned somewhere that it explained how to make sense, in terms of indexed
 families, of mutually defined inductive types leaving at different levels;
 and stayed because I kept seeing other interesting topics. It&#39;s a trap.&lt;/p&gt;
 
-&lt;h3&gt;Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;Page 4, &lt;a href=&quot;http://www.citeulike.org/user/gallais/article/2399086&quot;&gt;
+&lt;a name=&quot;Footnotes&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Footnotes&quot;&gt;#&lt;/a&gt; Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;Page 4, &lt;a href=&quot;http://www.citeulike.org/user/gallais/article/2399086&quot;&gt;
 Finger trees: a simple general-purpose data structure&lt;/a&gt; by Ralf Hinze, Ross
 Paterson.&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot2&quot; href=&quot;#reftop2&quot;&gt;[2]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;&lt;span class=inline-code&gt;_+_&lt;/span&gt; of type &lt;span class=inline-code&gt;ℕ → Set → Set&lt;/span&gt; is used here
 to mean that a finite number of new bound variable have been introduced by the
@@ -2076,8 +2506,8 @@ to the actual meat of this post: the lazy equality test.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;0&quot; /&gt;
-&lt;h3&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#804&quot;&gt;Binding? de Bruijn!&lt;/a&gt;&lt;/h3&gt;
+&lt;a name=&quot;section0&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section0&quot;&gt;#&lt;/a&gt; &lt;a href=&quot;code/LazyLambda/LazyLambda.html#804&quot;&gt;Binding? de Bruijn!&lt;/a&gt;&lt;/h3&gt;
 
 
 
@@ -2114,8 +2544,8 @@ subst (app t u) ρ = app (subst t ρ) (subst u ρ)
 
 
 
-&lt;a name=&quot;1&quot; /&gt;
-&lt;h3&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#2195&quot;&gt;Type level de Bruijn indices&lt;/a&gt;&lt;/h3&gt;
+&lt;a name=&quot;section1&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section1&quot;&gt;#&lt;/a&gt; &lt;a href=&quot;code/LazyLambda/LazyLambda.html#2195&quot;&gt;Type level de Bruijn indices&lt;/a&gt;&lt;/h3&gt;
 
 
 
@@ -2168,8 +2598,8 @@ pass under a binder.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;2&quot; /&gt;
-&lt;h3&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#5159&quot;&gt;Lazy weakenings&lt;/a&gt;&lt;/h3&gt;
+&lt;a name=&quot;section2&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section2&quot;&gt;#&lt;/a&gt; &lt;a href=&quot;code/LazyLambda/LazyLambda.html#5159&quot;&gt;Lazy weakenings&lt;/a&gt;&lt;/h3&gt;
 
 
 
@@ -2206,8 +2636,8 @@ as valid.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;3&quot; /&gt;
-&lt;h3&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#7263&quot;&gt;Equality testing&lt;/a&gt;&lt;/h3&gt;
+&lt;a name=&quot;section3&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section3&quot;&gt;#&lt;/a&gt; &lt;a href=&quot;code/LazyLambda/LazyLambda.html#7263&quot;&gt;Equality testing&lt;/a&gt;&lt;/h3&gt;
 
 
 
@@ -2225,8 +2655,8 @@ form&lt;/i&gt;.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;4&quot; /&gt;
-&lt;h3&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#7932&quot;&gt;Lazy equality testing&lt;/a&gt;&lt;/h3&gt;
+&lt;a name=&quot;section4&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section4&quot;&gt;#&lt;/a&gt; &lt;a href=&quot;code/LazyLambda/LazyLambda.html#7932&quot;&gt;Lazy equality testing&lt;/a&gt;&lt;/h3&gt;
 
 
 
@@ -2238,8 +2668,8 @@ testing.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;5&quot; /&gt;
-&lt;h4&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#4498&quot;&gt;Context inclusions&lt;/a&gt;&lt;/h4&gt;
+&lt;a name=&quot;section5&quot; /&gt;
+&lt;h4&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section5&quot;&gt;#&lt;/a&gt; &lt;a href=&quot;code/LazyLambda/LazyLambda.html#4498&quot;&gt;Context inclusions&lt;/a&gt;&lt;/h4&gt;
 
 
 
@@ -2266,8 +2696,8 @@ moment one encounters a weakening. &lt;/p&gt;
 
 
 
-&lt;a name=&quot;6&quot; /&gt;
-&lt;h4&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#10054&quot;&gt;Term comparison&lt;/a&gt;&lt;/h4&gt;
+&lt;a name=&quot;section6&quot; /&gt;
+&lt;h4&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section6&quot;&gt;#&lt;/a&gt; &lt;a href=&quot;code/LazyLambda/LazyLambda.html#10054&quot;&gt;Term comparison&lt;/a&gt;&lt;/h4&gt;
 
 
 
@@ -2332,8 +2762,8 @@ deciding equality.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;7&quot; /&gt;
-&lt;h4&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#8474&quot;&gt;Variable
+&lt;a name=&quot;section7&quot; /&gt;
+&lt;h4&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section7&quot;&gt;#&lt;/a&gt; &lt;a href=&quot;code/LazyLambda/LazyLambda.html#8474&quot;&gt;Variable
 comparison&lt;/a&gt;&lt;/h4&gt;
 
 
@@ -2386,8 +2816,8 @@ counter and keep comparing the rest of the inclusion proofs.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;8&quot; /&gt;
-&lt;h4&gt;&lt;a href=&quot;code/LazyLambda/LazyLambda.html#12026&quot;&gt;Testing equality&lt;/a&gt;&lt;/h4&gt;
+&lt;a name=&quot;section8&quot; /&gt;
+&lt;h4&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section8&quot;&gt;#&lt;/a&gt; &lt;a href=&quot;code/LazyLambda/LazyLambda.html#12026&quot;&gt;Testing equality&lt;/a&gt;&lt;/h4&gt;
 
 
 
@@ -2397,7 +2827,8 @@ checking whether such an equality derivation can be built. And it&#39;s
 quite a lot simpler to do now that the rules are guiding the
 implementation.&lt;/p&gt;
 
-&lt;h3&gt;Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;&lt;a href=&quot;http://codereview.stackexchange.com/questions/44470/beta-reducer-in-haskell/44518#44518&quot;&gt;Weakening&lt;/a&gt;
+&lt;a name=&quot;Footnotes&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Footnotes&quot;&gt;#&lt;/a&gt; Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;&lt;a href=&quot;http://codereview.stackexchange.com/questions/44470/beta-reducer-in-haskell/44518#44518&quot;&gt;Weakening&lt;/a&gt;
 is also a good candidate for this sort of nonsense given that
 one easily forgets to protect bound variables and end up treating
 them as if they were free.&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot2&quot; href=&quot;#reftop2&quot;&gt;[2]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;It &lt;i&gt;is&lt;/i&gt;
@@ -2434,7 +2865,8 @@ amusing to develop anyway so here it is.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;TheDataStructuresInvolved&quot; /&gt;&lt;h3&gt;The data structures involved&lt;/h3&gt;
+&lt;a name=&quot;TheDataStructuresInvolved&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#TheDataStructuresInvolved&quot;&gt;#&lt;/a&gt; The data structures involved&lt;/h3&gt;
 
 
 
@@ -2444,7 +2876,8 @@ operations morally implementing the same concepts can have the same name.&lt;/p&
 
 
 
-&lt;a name=&quot;Dimensions&quot; /&gt;&lt;h4&gt;Dimensions&lt;/h4&gt;
+&lt;a name=&quot;Dimensions&quot; /&gt;
+&lt;h4&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Dimensions&quot;&gt;#&lt;/a&gt; Dimensions&lt;/h4&gt;
 
 
 
@@ -2488,7 +2921,8 @@ which is instantiated with &lt;span class=inline-code&gt;+ 1&lt;/span&gt;. As an
 
 
 
-&lt;a name=&quot;UnitsOfMeasure&quot; /&gt;&lt;h4&gt;Units of measure&lt;/h4&gt;
+&lt;a name=&quot;UnitsOfMeasure&quot; /&gt;
+&lt;h4&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#UnitsOfMeasure&quot;&gt;#&lt;/a&gt; Units of measure&lt;/h4&gt;
 
 
 
@@ -2542,7 +2976,8 @@ min = 60 , _ # sec&lt;/p&gt;
 
 
 
-&lt;a name=&quot;Values&quot; /&gt;&lt;h4&gt;Values&lt;/h4&gt;
+&lt;a name=&quot;Values&quot; /&gt;
+&lt;h4&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Values&quot;&gt;#&lt;/a&gt; Values&lt;/h4&gt;
 
 
 
@@ -2587,7 +3022,8 @@ from one type to an other.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;Examples&quot; /&gt;&lt;h3&gt;Examples&lt;/h3&gt;
+&lt;a name=&quot;Examples&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Examples&quot;&gt;#&lt;/a&gt; Examples&lt;/h3&gt;
 
 
 
@@ -2602,7 +3038,8 @@ For instance, the following expression normalizes to &lt;span class=inline-code&
 
 
 
-&lt;a name=&quot;Application:SimulatingTheFreeFallOfABall&quot; /&gt;&lt;h3&gt;Application: simulating the free fall of a ball&lt;/h3&gt;
+&lt;a name=&quot;Application:SimulatingTheFreeFallOfABall&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Application:SimulatingTheFreeFallOfABall&quot;&gt;#&lt;/a&gt; Application: simulating the free fall of a ball&lt;/h3&gt;
 
 
 
@@ -2650,7 +3087,8 @@ trajectory in the vertical plan.&lt;/p&gt;
 &lt;center&gt;&lt;img src=&quot;/img/freefall.png&quot; /&gt;&lt;/center&gt;
 
 
-&lt;a name=&quot;Conclusions&quot; /&gt;&lt;h3&gt;Conclusions&lt;/h3&gt;
+&lt;a name=&quot;Conclusions&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Conclusions&quot;&gt;#&lt;/a&gt; Conclusions&lt;/h3&gt;
 
 
 
@@ -2675,7 +3113,8 @@ functions &lt;i&gt;via&lt;/i&gt; equations, my (ridiculously small but good enou
 understanding of how to import Haskell function as postulates, etc. kept me
 away from Coq (at least for the experimentation phase).&lt;/p&gt;
 
-&lt;h3&gt;Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;A good start to learn about the free lunch
+&lt;a name=&quot;Footnotes&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Footnotes&quot;&gt;#&lt;/a&gt; Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;A good start to learn about the free lunch
 provided by parametricity is obviously Phil Wadler&#39;s &lt;i&gt;Theorems for Free!&lt;/i&gt;
 (&lt;a href=&quot;http://www.citeulike.org/user/gallais/article/1848264&quot;&gt;citeulike&lt;/a&gt;).
 &lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot2&quot; href=&quot;#reftop2&quot;&gt;[2]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;Andrew Kennedy&#39;s paper &lt;i&gt;Types for
@@ -2721,7 +3160,8 @@ properties in Type Theory.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;TheSetting&quot; /&gt;&lt;h3&gt;The setting&lt;/h3&gt;
+&lt;a name=&quot;TheSetting&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#TheSetting&quot;&gt;#&lt;/a&gt; The setting&lt;/h3&gt;
 
 
 
@@ -2763,7 +3203,8 @@ operations.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;ModelDefinition-WhereTheGlueingHappens&quot; /&gt;&lt;h3&gt;Model definition - where the glueing happens&lt;/h3&gt;
+&lt;a name=&quot;ModelDefinition-WhereTheGlueingHappens&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#ModelDefinition-WhereTheGlueingHappens&quot;&gt;#&lt;/a&gt; Model definition - where the glueing happens&lt;/h3&gt;
 
 
 
@@ -2803,7 +3244,8 @@ notion of weakening can be made formal.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;The(notSo)TrivialQuotingFunction&quot; /&gt;&lt;h3&gt;The (not so) trivial quoting function&lt;/h3&gt;
+&lt;a name=&quot;The(notSo)TrivialQuotingFunction&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#The(notSo)TrivialQuotingFunction&quot;&gt;#&lt;/a&gt; The (not so) trivial quoting function&lt;/h3&gt;
 
 
 
@@ -2842,7 +3284,8 @@ average normalization by evaluation formalization.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;EvaluationFunction&quot; /&gt;&lt;h3&gt;Evaluation function&lt;/h3&gt;
+&lt;a name=&quot;EvaluationFunction&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#EvaluationFunction&quot;&gt;#&lt;/a&gt; Evaluation function&lt;/h3&gt;
 
 
 
@@ -2899,7 +3342,8 @@ norm[ σ ] t = ↑[ σ ] eval t (⊩ε-refl _)&lt;/p&gt;
 
 
 
-&lt;a name=&quot;Conclusions&quot; /&gt;&lt;h3&gt;Conclusions&lt;/h3&gt;
+&lt;a name=&quot;Conclusions&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Conclusions&quot;&gt;#&lt;/a&gt; Conclusions&lt;/h3&gt;
 
 
 
@@ -2910,7 +3354,8 @@ insights on already well understood constructions by e.g. making it
 possible to isolate different stages of the normalization process:
 computation and standardization in our case.&lt;/p&gt;
 
-&lt;h3&gt;Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;Intuitionistic model constructions and normalization
+&lt;a name=&quot;Footnotes&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Footnotes&quot;&gt;#&lt;/a&gt; Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;Intuitionistic model constructions and normalization
 proofs by Thierry Coquand and Peter Dybjer
 (&lt;a href=&quot;http://www.citeulike.org/user/gallais/article/8927583&quot;&gt;citeulike&lt;/a&gt;)&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot2&quot; href=&quot;#reftop2&quot;&gt;[2]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;&lt;a href=&quot;http://patch-tag.com/r/gallais/agda/snapshot/current/content/raw/src/nbe/stlc/whnf/model.agda&quot;&gt;Raw Agda&lt;/a&gt; development on patch-tag.&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot3&quot; href=&quot;#reftop3&quot;&gt;[3]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;It should be noted that the traditional eta-expansion trick
 (&lt;span class=inline-code&gt;↑[ σ ] ↓[ σ ] t&lt;/span&gt;) consisting of drowning the neutral term
@@ -2943,7 +3388,8 @@ rather than e.g. a pre-processor.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;TheUniverse&quot; /&gt;&lt;h3&gt;The universe&lt;/h3&gt;
+&lt;a name=&quot;TheUniverse&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#TheUniverse&quot;&gt;#&lt;/a&gt; The universe&lt;/h3&gt;
 
 
 
@@ -3017,7 +3463,8 @@ some point.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;WhatIsAVariable?&quot; /&gt;&lt;h4&gt;What is a variable?&lt;/h4&gt;
+&lt;a name=&quot;WhatIsAVariable?&quot; /&gt;
+&lt;h4&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#WhatIsAVariable?&quot;&gt;#&lt;/a&gt; What is a variable?&lt;/h4&gt;
 
 
 
@@ -3046,7 +3493,8 @@ are strictly positive by construction and accordingly have a fixpoint.&lt;/p&gt;
 
 
 
-&lt;a name=&quot;DefiningSubstitution&quot; /&gt;&lt;h3&gt;Defining substitution&lt;/h3&gt;
+&lt;a name=&quot;DefiningSubstitution&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#DefiningSubstitution&quot;&gt;#&lt;/a&gt; Defining substitution&lt;/h3&gt;
 
 
 
@@ -3112,7 +3560,8 @@ it is rather easy to define what&#39;s named β reduction in the lambda calculus
 
 
 
-&lt;a name=&quot;Examples&quot; /&gt;&lt;h3&gt;Examples&lt;/h3&gt;
+&lt;a name=&quot;Examples&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Examples&quot;&gt;#&lt;/a&gt; Examples&lt;/h3&gt;
 
 
 
@@ -3169,7 +3618,8 @@ lemma = ∷ ♯ lemma&lt;/p&gt;
 
 
 
-&lt;a name=&quot;What&#39;sNext?&quot; /&gt;&lt;h3&gt;What&#39;s next?&lt;/h3&gt;
+&lt;a name=&quot;What&#39;sNext?&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#What&#39;sNext?&quot;&gt;#&lt;/a&gt; What&#39;s next?&lt;/h3&gt;
 
 
 
@@ -3182,7 +3632,8 @@ calculus such as &lt;span class=inline-code&gt;`K&lt;/span&gt;. But that is anot
 &lt;p class=code&gt;`K : ∀ {Γ σ τ} → Γ ⊢ σ `→ τ `→ σ
 `K = :λ :λ :v (s z)&lt;/p&gt;
 
-&lt;h3&gt;Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;&lt;a href=&quot;http://www.citeulike.org/user/gallais/article/6926730&quot;&gt;
+&lt;a name=&quot;Footnotes&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Footnotes&quot;&gt;#&lt;/a&gt; Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;&lt;a href=&quot;http://www.citeulike.org/user/gallais/article/6926730&quot;&gt;
 Generic Programming within Dependently Typed Programming&lt;/a&gt;&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot2&quot; href=&quot;#reftop2&quot;&gt;[2]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;Ornamental algebras, algebraic ornaments
 (&lt;a href=&quot;https://personal.cis.strath.ac.uk/conor.mcbride/pub/OAAO/Ornament.pdf&quot;&gt;pdf&lt;/a&gt;)&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot3&quot; href=&quot;#reftop3&quot;&gt;[3]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;Cf. e.g. Peter Dybjer&#39;s &lt;a href=&quot;http://www.cse.chalmers.se/~peterd/papers/inductive.html&quot;&gt;
 work&lt;/a&gt;.&lt;/div&gt;&lt;/p&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot4&quot; href=&quot;#reftop4&quot;&gt;[4]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;
