@@ -88,7 +88,7 @@ about any expression in: there are side conditions!
 
 &lt;p&gt;
 These sides conditions can be understood from a very practical point of view:
-if &lt;tt&gt;i&lt;/tt&gt; gets instantiated to either &lt;tt&gt;0&lt;/tt&gt; or &lt;tt&gt;1&lt;/tt&gt;, the value
+if &lt;tt&gt;i&lt;/tt&gt; gets instantiated to either &lt;tt&gt;i0&lt;/tt&gt; or &lt;tt&gt;i1&lt;/tt&gt;, the value
 of &lt;span class=inline-code&gt;del x e i ++ f&lt;/span&gt; should not depend on whether we
 evaluate &lt;tt&gt;_++_&lt;/tt&gt; first and then instantiate &lt;tt&gt;i&lt;/tt&gt;, or the converse.
 To guarantee that evaluation is confluent, Agda demands that both reductions
@@ -99,26 +99,26 @@ lead to judgmentally equal values.
 
 &lt;p&gt;
 Understanding where these constraints come from, we can compute them. Remembering
-that if &lt;tt&gt;p&lt;/tt&gt; has type &lt;span class=inline-code&gt;a ≡ b&lt;/span&gt; then &lt;span class=inline-code&gt;p 0 = a&lt;/span&gt;
-and &lt;span class=inline-code&gt;p 1 = b&lt;/span&gt;:
+that if &lt;tt&gt;p&lt;/tt&gt; has type &lt;span class=inline-code&gt;a ≡ b&lt;/span&gt; then &lt;span class=inline-code&gt;p i0 = a&lt;/span&gt;
+and &lt;span class=inline-code&gt;p i1 = b&lt;/span&gt;:
 &lt;/p&gt;
 
 
 
-&lt;p class=code&gt;i = 0 ⊢ del x e i ++ f    { del x e 0 = x ∷ e }
-      = x ∷ e     ++ f    { unfold _++_ }
-      = x ∷ (e ++ f)
+&lt;p class=code&gt;i = i0 ⊢ del x e i ++ f    { del x e i0 = x ∷ e }
+       = x ∷ e     ++ f    { unfold _++_ }
+       = x ∷ (e ++ f)
 
-i = 1 ⊢ del x e i ++ f    { del x e 1 = e }
-      = e ++ f
+i = i1 ⊢ del x e i ++ f    { del x e i1 = e }
+       = e ++ f
 &lt;/p&gt;
 
 
 
 &lt;p&gt;
 So, the expression we pick to fill in the &lt;tt&gt;List⁰ A&lt;/tt&gt; will need to be
-equal to &lt;span class=inline-code&gt;x ∷ (e ++ f)&lt;/span&gt; if &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;0&lt;/tt&gt;
-and &lt;span class=inline-code&gt;e ++ f&lt;/span&gt; if &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;1&lt;/tt&gt;.
+equal to &lt;span class=inline-code&gt;x ∷ (e ++ f)&lt;/span&gt; if &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;i0&lt;/tt&gt;
+and &lt;span class=inline-code&gt;e ++ f&lt;/span&gt; if &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;i1&lt;/tt&gt;.
 Observing that &lt;span class=inline-code&gt;del x (e ++ f)&lt;/span&gt; has type
 &lt;span class=inline-code&gt;x ∷ (e ++ f) ≡ e ++ f&lt;/span&gt;, we pick the following
 solution:
@@ -208,26 +208,26 @@ A natural candidate for this equality is to use the induction hypothesis to
 obtain a proof that &lt;span class=inline-code&gt;e ++ [] ≡ e&lt;/span&gt; and use congruence
 to apply the function &lt;span class=inline-code&gt;λ e → del x e i&lt;/span&gt; to each side.
 However remember that we need to check that this definition is compatible with
-the other clauses when &lt;tt&gt;i&lt;/tt&gt; becomes either &lt;tt&gt;0&lt;/tt&gt; or &lt;tt&gt;1&lt;/tt&gt;.
+the other clauses when &lt;tt&gt;i&lt;/tt&gt; becomes either &lt;tt&gt;i0&lt;/tt&gt; or &lt;tt&gt;i1&lt;/tt&gt;.
 This gives us the following constraints:
 &lt;/p&gt;
 
 
 
-&lt;p class=code&gt;i = 0 ⊢ ++-idʳ (del x e i)       { del x e 0 = x ∷ e }
-      = ++-idʳ (x ∷ e)           { unfold ++-idʳ }
-      = cong (x ∷_) (++-idʳ e)
+&lt;p class=code&gt;i = i0 ⊢ ++-idʳ (del x e i)       { del x e i0 = x ∷ e }
+       = ++-idʳ (x ∷ e)           { unfold ++-idʳ }
+       = cong (x ∷_) (++-idʳ e)
 
-i = 1 ⊢ ++-idʳ (del x e i)       { del x e 1 = e }
-      = ++-idʳ e
+i = i1 ⊢ ++-idʳ (del x e i)       { del x e i1 = e }
+       = ++-idʳ e
 &lt;/p&gt;
 
 
 
 &lt;p&gt;
 We can easily verify that &lt;span class=inline-code&gt;cong (λ e → del x e i) (++-idʳ e)&lt;/span&gt;
-does collapse to the right expressions when we set &lt;tt&gt;i&lt;/tt&gt; to either &lt;tt&gt;0&lt;/tt&gt; or
-&lt;tt&gt;1&lt;/tt&gt; thanks in part to the fact that &lt;span class=inline-code&gt;cong (λ x → x) p&lt;/span&gt;
+does collapse to the right expressions when we set &lt;tt&gt;i&lt;/tt&gt; to either &lt;tt&gt;i0&lt;/tt&gt; or
+&lt;tt&gt;i1&lt;/tt&gt; thanks in part to the fact that &lt;span class=inline-code&gt;cong (λ x → x) p&lt;/span&gt;
 is definitionally equal to &lt;span class=inline-code&gt;p&lt;/span&gt;. This leads us to the following
 completed definition:
 &lt;/p&gt;
@@ -297,24 +297,24 @@ We write:
 
 
 &lt;p&gt;
-We let the reader check that when &lt;tt&gt;j&lt;/tt&gt; is &lt;tt&gt;0&lt;/tt&gt; we
+We let the reader check that when &lt;tt&gt;j&lt;/tt&gt; is &lt;tt&gt;i0&lt;/tt&gt; we
 do get &lt;span class=inline-code&gt;x ∷ e ++ f&lt;/span&gt; whilst making &lt;tt&gt;j&lt;/tt&gt;
-equal to &lt;tt&gt;1&lt;/tt&gt; takes us to &lt;span class=inline-code&gt;f&lt;/span&gt;.
+equal to &lt;tt&gt;i1&lt;/tt&gt; takes us to &lt;span class=inline-code&gt;f&lt;/span&gt;.
 We are now left with the last clause. We need a term of type
 &lt;span class=inline-code&gt;del x e i ++ f ≡ f&lt;/span&gt; which satisfies the
 usual two side conditions stating that when we make &lt;tt&gt;i&lt;/tt&gt;
-either &lt;tt&gt;0&lt;/tt&gt; or &lt;tt&gt;1&lt;/tt&gt;, it is compatible with the previous
+either &lt;tt&gt;i0&lt;/tt&gt; or &lt;tt&gt;i1&lt;/tt&gt;, it is compatible with the previous
 clauses.
 &lt;/p&gt;
 
 
 
-&lt;p class=code&gt;i = 0 ⊢ dels (del x e i) f j       { del x e 0 = x ∷ e }
-      = dels (x ∷ e) f j           { unfold dels }
-      = del x (dels e f j) j
+&lt;p class=code&gt;i = i0 ⊢ dels (del x e i) f j       { del x e i0 = x ∷ e }
+       = dels (x ∷ e) f j           { unfold dels }
+       = del x (dels e f j) j
 
-i = 1 ⊢ dels (del x e i) f j       { del x e 1 = e }
-      = dels e f j
+i = i1 ⊢ dels (del x e i) f j       { del x e i1 = e }
+       = dels e f j
 &lt;/p&gt;
 
 
@@ -323,8 +323,8 @@ i = 1 ⊢ dels (del x e i) f j       { del x e 1 = e }
 to the solution. One thing we can notice is that &lt;span class=inline-code&gt;dels e f j&lt;/span&gt;
 is the right hand side of the equality proved by &lt;span class=inline-code&gt;del x (dels e f j)&lt;/span&gt;.
 So we need to somehow get a term which is equal &lt;span class=inline-code&gt;del x (dels e f j) j&lt;/span&gt;
-when &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;0&lt;/tt&gt; and collapses to &lt;span class=inline-code&gt;del x (dels e f j)&lt;/span&gt;&#39;s
-right hand side when &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;1&lt;/tt&gt;.&lt;/p&gt;
+when &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;i0&lt;/tt&gt; and collapses to &lt;span class=inline-code&gt;del x (dels e f j)&lt;/span&gt;&#39;s
+right hand side when &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;i1&lt;/tt&gt;.&lt;/p&gt;
 
 
 
@@ -332,8 +332,8 @@ right hand side when &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;1&lt;/tt&gt;.&lt;/p&gt;
 The key idea in cubical Agda which will help us here is the fact that
 &lt;a href=&quot;https://agda.readthedocs.io/en/latest/language/cubical.html#the-interval-and-path-types&quot;&gt;
 elements of the interval for a De Morgan algebra&lt;/a&gt;. We can use the interval
-value &lt;span class=inline-code&gt;i ∨ j&lt;/span&gt;: when &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;0&lt;/tt&gt;, we get &lt;tt&gt;j&lt;/tt&gt;
-back and when &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;1&lt;/tt&gt;, &lt;span class=inline-code&gt;i ∨ j&lt;/span&gt; collapses to &lt;tt&gt;1&lt;/tt&gt;.
+value &lt;span class=inline-code&gt;i ∨ j&lt;/span&gt;: when &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;i0&lt;/tt&gt;, we get &lt;tt&gt;j&lt;/tt&gt;
+back and when &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;i1&lt;/tt&gt;, &lt;span class=inline-code&gt;i ∨ j&lt;/span&gt; collapses to &lt;tt&gt;i1&lt;/tt&gt;.
 &lt;/p&gt;
 
 
@@ -381,8 +381,8 @@ discussions that ensued.
 &lt;a name=&quot;Footnotes&quot; /&gt;
 &lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Footnotes&quot;&gt;#&lt;/a&gt; Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;
 Remember that an equality proof &lt;span class=inline-code&gt;x ≡ y&lt;/span&gt; in &lt;tt&gt;A&lt;/tt&gt; is a function
-from the interval to &lt;tt&gt;A&lt;/tt&gt; which evaluates to &lt;span class=inline-code&gt;x&lt;/span&gt; at &lt;tt&gt;0&lt;/tt&gt;
-and &lt;span class=inline-code&gt;y&lt;/span&gt; at &lt;tt&gt;1&lt;/tt&gt;. The proof &lt;span class=inline-code&gt;refl&lt;/span&gt;
+from the interval to &lt;tt&gt;A&lt;/tt&gt; which evaluates to &lt;span class=inline-code&gt;x&lt;/span&gt; at &lt;tt&gt;i0&lt;/tt&gt;
+and &lt;span class=inline-code&gt;y&lt;/span&gt; at &lt;tt&gt;i1&lt;/tt&gt;. The proof &lt;span class=inline-code&gt;refl&lt;/span&gt;
 of &lt;span class=inline-code&gt;x ≡ x&lt;/span&gt; corresponds to the constant function
 &lt;span class=inline-code&gt;λ j → x&lt;/span&gt;.&lt;/div&gt;&lt;/p&gt;&lt;/div&gt;</description><guid isPermaLink="true">http://gallais.github.io/blog/first-cubical-experiment.html</guid><pubDate>Wed,  6 Mar 2019 13:37:00 UTC</pubDate></item><item><title>Instrumenting Total Parsers Written in agdarsec</title><link>http://gallais.github.io/blog/instrumenting-agdarsec.html</link><description>&lt;head&gt;&lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot; href=&quot;http://gallais.github.io/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Instrumenting Total Parsers Written in agdarsec&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://www.github.com/gallais/agdarsec&quot;&gt;agdarsec&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;https://gallais.github.io/agdarsec/&quot;&gt;documentation&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;
