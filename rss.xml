@@ -1,4 +1,390 @@
-<rss version="2.0"><channel><title>gallais&#39; blog</title><link>http://gallais.github.io/blog/</link><description>gallais&#39; blog</description><item><title>First Cubical Experiment</title><link>http://gallais.github.io/blog/first-cubical-experiment.html</link><description>&lt;head&gt;&lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot; href=&quot;http://gallais.github.io/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;First Cubical Experiment&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://agda.readthedocs.io/en/latest/language/cubical.html&quot;&gt;Cubical Agda&lt;/a&gt;&lt;/li&gt;
+<rss version="2.0"><channel><title>gallais&#39; blog</title><link>http://gallais.github.io/blog/</link><description>gallais&#39; blog</description><item><title>Ceci n&#39;est pas un default</title><link>http://gallais.github.io/blog/ceci-pas-default.html</link><description>&lt;head&gt;&lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot; href=&quot;http://gallais.github.io/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Ceci n&#39;est pas un default&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;
+    &lt;a href=&quot;https://github.com/gallais/potpourri/blob/a20fed3c4b7e46c0683eba55788d07f09bbaf776/haskell/defaulting/Default.hs&quot;&gt;Default.hs&lt;/a&gt;
+&lt;/li&gt;
+&lt;li&gt;
+    &lt;a href=&quot;https://github.com/agda/agda/blob/6f3046e081ebfa40793c3a064e53bdbd83c82dcf/src/full/Agda/Utils/WithDefault.hs&quot;&gt;In Agda&#39;s codebase&lt;/a&gt;
+&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;
+
+
+&lt;p id=chapo&gt;Being the default value is not the same as being actively set
+to a value which happens to match the default. &lt;tt&gt;Maybe&lt;/tt&gt; as a type
+constructor enriching an existing type with a default value is not
+satisfactory: what this default value means is not documented in the
+type.
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+When designing a command line interface, it is quite often necessary to
+provide default values for some of the flags.&lt;/p&gt;
+
+
+
+&lt;p&gt;
+Sometimes there is only one sensible choice and it is simply picked when
+initialising the record of options. In Agda for instance we set the default
+verbosity to 1 (the bigger the number, the more detailed the debugging
+information) and ask for the empty context (the more specific the context,
+the more irrelevant information is filtered out).
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+Other times, there are multiple sensible choices and they may be incompatible.
+In Agda, both guardedness checking and sized types can be used to program with
+codata. But combining the two makes the system unsound. By default we want
+users to be able to use both so both are turned on. However if they use the
+&lt;tt&gt;--safe&lt;/tt&gt; flag, they should only be allowed to use at most one. We want
+to shout at the user if they actively turn both on and declare the module 
+should be safe. So we need to distinguish between the flags being set to
+the default and them being actively set to a value which happens to match the
+default.
+&lt;/p&gt;
+
+
+
+&lt;a name=&quot;KeyIdea:AFancyMaybe&quot; /&gt;
+&lt;h2&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#KeyIdea:AFancyMaybe&quot;&gt;#&lt;/a&gt; Key Idea: A Fancy Maybe&lt;/h2&gt;
+
+
+
+&lt;p&gt;
+We could be using &lt;tt&gt;Maybe&lt;/tt&gt; as the type constructor extending a type
+with a default value. However the design choices are now scattered in a
+lot of different places:
+&lt;ul&gt;&lt;li&gt; sensible defaults are set in the initial record value,
+&lt;/li&gt;
+&lt;li&gt; the choice to use &lt;tt&gt;Maybe&lt;/tt&gt; to add a neutral default value is
+     made explicit in the type,
+&lt;/li&gt;
+&lt;li&gt; but this default value is declared somewhere else e.g. in a cleanup
+     function computing the final set of options,
+&lt;/li&gt;
+&lt;li&gt; if we collapse &lt;tt&gt;Maybe a&lt;/tt&gt; to &lt;tt&gt;a&lt;/tt&gt; in multiple locations,
+     we need to be consistent and make sure that we use the same default
+     everywhere.
+&lt;/li&gt;&lt;/ul&gt;
+This situation is not very satisfactory. And it turns out that we can do
+better with a little bit of type-level programming. We start with a fancy
+version of &lt;tt&gt;Maybe&lt;/tt&gt; which is parametrised not only by a type but also
+by a type-level value of that type.&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;data WithDefault k (a :: k) where
+  Default :: WithDefault k a
+  Value   :: k -&gt; WithDefault k a
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+When we write &lt;span class=inline-code&gt;WithDefault Bool &#39;True&lt;/span&gt; we explicitly
+tell the reader that our &lt;tt&gt;Maybe&lt;/tt&gt;-looking optional type will default
+to &lt;tt&gt;True&lt;/tt&gt; unless the value has been set. We can start by writing
+the function which let us set a value. In case it&#39;s been set already we
+simply ignore the new value.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;setDefault :: k -&gt; WithDefault k a -&gt; WithDefault k a
+setDefault k v = case v of
+  Default -&gt; Value k
+  _ -&gt; v
+&lt;/p&gt;
+
+
+
+&lt;a name=&quot;section0&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#section0&quot;&gt;#&lt;/a&gt; Turning &lt;tt&gt;Default&lt;/tt&gt; into the default.&lt;/h3&gt;
+
+
+
+&lt;p&gt;
+Now that we can set the value, it&#39;s only natural to want to also get it.
+In case it still is the &lt;tt&gt;Default&lt;/tt&gt;, we need to be able to produce the
+term-level value which corresponds to the type level one. To do that we need
+some extra machinery.
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+The &lt;a href=&quot;https://dl.acm.org/citation.cfm?id=2503786&quot;&gt;hasochistic&lt;/a&gt; device
+that allows us to connect term and type levels is naturally the notion of
+&lt;a href=&quot;https://dl.acm.org/citation.cfm?id=2364522&quot;&gt;singletons&lt;/a&gt;. We postulate
+the existence of a data family of singletons, that is to say that to each
+type-level constructor should correspond a term-level one indexed by it.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;data family Sing k (a :: k)
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+We say that a type-level value is &lt;tt&gt;Known&lt;/tt&gt; if we can obtain a singleton
+for it. We also assume that if a value is known then we are able to erase a
+singleton for it down to its mere term level value.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;class Known k (a :: k) | a -&gt; k where
+  sing  :: Sing k a
+  erase :: Sing k a -&gt; k
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+Now that we have the ability to turn a type-level value into a term level one,
+we can write a function out of &lt;tt&gt;WithDefault&lt;/tt&gt;. It is essentially the
+function &lt;tt&gt;fromMaybe&lt;/tt&gt; except that we do not need to specify what to do
+in case we find our &lt;tt&gt;Nothing&lt;/tt&gt;-like constructor: provided that the
+type-level value is &lt;tt&gt;Known&lt;/tt&gt;, the type itself tells us what the output
+should be.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;collapseDefault :: forall k a. Known k a =&gt; WithDefault k a -&gt; k
+collapseDefault x = case x of
+  Default -&gt; erase (sing :: Sing k a)
+  Value v -&gt; v
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+So what do instances of these data and class definitions look like?
+&lt;/p&gt;
+
+
+
+&lt;a name=&quot;FirstInstance:BooleanLiterals&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#FirstInstance:BooleanLiterals&quot;&gt;#&lt;/a&gt; First instance: Boolean literals&lt;/h3&gt;
+
+
+
+&lt;p&gt;
+Using a Generalized Algebraic DataType (GADT), we define the singleton
+for booleans like so: &lt;tt&gt;STrue&lt;/tt&gt; is the term-level constructor
+reflecting the type-level &lt;tt&gt;&#39;True&lt;/tt&gt; whilst &lt;tt&gt;SFalse&lt;/tt&gt; corresponds
+to &lt;tt&gt;&#39;False&lt;/tt&gt;. This makes both &lt;tt&gt;&#39;True&lt;/tt&gt; and &lt;tt&gt;&#39;False&lt;/tt&gt;
+known booleans: we have singletons for them and can easily produce the
+underlying &lt;tt&gt;Bool&lt;/tt&gt;.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;data instance Sing Bool b where
+  STrue  :: Sing Bool &#39;True
+  SFalse :: Sing Bool &#39;False
+
+instance Known Bool &#39;True where
+  sing = STrue
+  erase _ = True
+
+instance Known Bool &#39;False where
+  sing = SFalse
+  erase _ = False
+&lt;/p&gt;
+
+
+
+&lt;p&gt;Using these instances, we can already write some examples. Evaluating
+the following expression yields the expected list
+&lt;span class=inline-code&gt;[False,True,True]&lt;/span&gt;&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;bool :: [Bool]
+bool = collapseDefault &lt;$&gt;
+     [ Value False
+     , Value True
+     , Default :: WithDefault Bool &#39;True
+     ]
+&lt;/p&gt;
+
+
+
+&lt;a name=&quot;PolymorphicInstances&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#PolymorphicInstances&quot;&gt;#&lt;/a&gt; Polymorphic Instances&lt;/h3&gt;
+
+
+
+&lt;p&gt;
+We are not limited to ground types: we can give instances for polymorphic
+container types by assuming we have instances for the elements they store.
+This is where the fact that &lt;tt&gt;Sing&lt;/tt&gt; is a data family of singletons
+shines: we have a unique name for all of these constructs. Let us define
+the following singleton datatype for &lt;tt&gt;Maybe&lt;/tt&gt;:
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;data instance Sing (Maybe a) m where
+  SNothing :: Sing (Maybe a) &#39;Nothing
+  SJust    :: Sing a v -&gt; Sing (Maybe a) (&#39;Just v)
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+The type-level constructor &lt;tt&gt;&#39;Nothing&lt;/tt&gt; is evidently known: its
+singleton is &lt;tt&gt;SNothing&lt;/tt&gt; and it erases to the term level value
+&lt;tt&gt;Nothing&lt;/tt&gt;.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;instance Known (Maybe a) &#39;Nothing where
+  sing = SNothing
+  erase _ = Nothing
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+We can only say that &lt;tt&gt;&#39;Just v&lt;/tt&gt; is known if &lt;tt&gt;v&lt;/tt&gt; itself
+already is. We obtain the right singleton by using the assumption
+that &lt;tt&gt;v&lt;/tt&gt; is known to obtain a singleton for it and wrap it
+in an &lt;tt&gt;SJust&lt;/tt&gt; constructor. Erasure is defined in a similar
+manner: we output &lt;tt&gt;Just&lt;/tt&gt; and use &lt;tt&gt;erase&lt;/tt&gt; to compute
+its content.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;instance Known a v =&gt; Known (Maybe a) (&#39;Just v) where
+  sing            = SJust sing
+  erase (SJust v) = Just (erase v)
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+We have similar instances for lists and pairs.
+&lt;/p&gt;
+
+
+
+&lt;a name=&quot;DealingWithText&quot; /&gt;
+&lt;h2&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#DealingWithText&quot;&gt;#&lt;/a&gt; Dealing with Text&lt;/h2&gt;
+
+
+
+&lt;p&gt;
+Unfortunately the current setup means we cannot state that we expect to
+be given a string but will happily default to &quot;Hello&quot; if we are not given
+anything. GHC does provide us with &lt;tt&gt;Symbol&lt;/tt&gt;, the kind of type-level
+strings. So we ought to be able to also support default values for various
+string types such as &lt;tt&gt;Text&lt;/tt&gt;.
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+The trick here is to decorrelate the kind of the type-level value and the
+type it represents. Instead of the &lt;tt&gt;WithDefault&lt;/tt&gt; type we defined
+earlier, we use the following more general one as our core representation.
+The original &lt;tt&gt;WithDefault&lt;/tt&gt; is the special case where kind and type
+do match up.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;data WithDefault k (a :: l) where
+  Default :: WithDefault k a
+  Value   :: k -&gt; WithDefault k a
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+This change needs to be propagated through all the families, classes,
+instance declarations, and functions. The interested reader can check
+the &lt;a href=&quot;https://github.com/gallais/potpourri/blob/a20fed3c4b7e46c0683eba55788d07f09bbaf776/haskell/defaulting/Default.hs&quot;&gt;Haskell file&lt;/a&gt;. We choose
+to focus here on the &lt;tt&gt;Text&lt;/tt&gt; instance.
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+We can&#39;t quite define an enumerated type providing a constructor for each
+string in existence. However the kind people at GHC&#39;s HQ are already doing
+this for us:
+&lt;a href=&quot;https://hackage.haskell.org/package/base-4.12.0.0/docs/GHC-TypeLits.html&quot;&gt;&lt;tt&gt;GHC.TypeLits&lt;/tt&gt;&lt;/a&gt;
+gives us access to &lt;tt&gt;KnownSymbol&lt;/tt&gt;. Our data instance for &lt;tt&gt;Text&lt;/tt&gt;
+is capturing a constraint of the form &lt;tt&gt;KnownSymbol s&lt;/tt&gt; as the notion
+of singleton for &lt;tt&gt;s&lt;/tt&gt;.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;data instance Sing Text (s :: Symbol) where
+  SText :: KnownSymbol s =&gt; Sing Text s
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+Using the GHC-provided function &lt;tt&gt;symbolVal&lt;/tt&gt;, we can obtain a
+&lt;tt&gt;String&lt;/tt&gt; corresponding to a given &lt;tt&gt;KnownSymbol&lt;/tt&gt;. As a
+consequence, if &lt;tt&gt;s&lt;/tt&gt; is a known symbol, we can trivially build
+a proof that it is a &lt;tt&gt;Known Text&lt;/tt&gt; too.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;instance KnownSymbol s =&gt; Known Text (s :: Symbol) where
+  sing  = SText
+  erase = pack . symbolVal
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+Although the instance declarations are now a bit more verbose, the user
+experience is virtually the same. And we now support string literals.
+The following test showcasing all of the instances mentioned in this post
+evaluates to the list
+&lt;span class=inline-code&gt;[[(True,Just &quot;Hello World&quot;)],[(False,Nothing)]]&lt;/span&gt;:
+&lt;/p&gt;
+
+
+&lt;p class=code&gt;test :: [[(Bool, Maybe Text)]]
+test = collapseDefault &lt;$&gt;
+     [ Default :: WithDefault [(Bool, Maybe Text)]
+                  &#39;[ &#39;( &#39;True , &#39;Just &quot;Hello World&quot;) ]
+     , Value [(False, Nothing)]
+     ]
+&lt;/p&gt;
+
+
+
+&lt;a name=&quot;WrapUp&quot; /&gt;
+&lt;h2&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#WrapUp&quot;&gt;#&lt;/a&gt; Wrap up&lt;/h2&gt;
+
+
+
+&lt;p&gt;
+We have seen that we can define an optional type indexed by the value
+it should default to. Using standard type-level trickery we can write
+the function collapsing the &lt;tt&gt;Default&lt;/tt&gt; constructor to the value
+specified in the type. Although this most general version works well,
+it requires fairly recent &lt;tt&gt;LANGUAGE&lt;/tt&gt; extensions so
+&lt;a href=&quot;https://github.com/agda/agda/blob/6f3046e081ebfa40793c3a064e53bdbd83c82dcf/src/full/Agda/Utils/WithDefault.hs&quot;&gt;we are not using it in the Agda codebase&lt;/a&gt;,
+limiting ourselves to the special case of the &lt;tt&gt;Bool&lt;/tt&gt; version.
+&lt;/p&gt;
+
+</description><guid isPermaLink="true">http://gallais.github.io/blog/ceci-pas-default.html</guid><pubDate>Mon, 11 Mar 2019 13:37:00 UTC</pubDate></item><item><title>First Cubical Experiment</title><link>http://gallais.github.io/blog/first-cubical-experiment.html</link><description>&lt;head&gt;&lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot; href=&quot;http://gallais.github.io/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;First Cubical Experiment&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://agda.readthedocs.io/en/latest/language/cubical.html&quot;&gt;Cubical Agda&lt;/a&gt;&lt;/li&gt;
 &lt;li&gt;&lt;a href=&quot;https://github.com/gallais/potpourri/blob/efdfa3e5f84953666dfd9b98499ae9136ade570b/agda/cubical/list0.agda&quot;&gt;list0.agda&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;
 
 
