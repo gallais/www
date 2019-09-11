@@ -717,7 +717,7 @@ right hand side when &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;i1&lt;/tt&gt;.&lt;/p&gt
 &lt;p&gt;
 The key idea in cubical Agda which will help us here is the fact that
 &lt;a href=&quot;https://agda.readthedocs.io/en/latest/language/cubical.html#the-interval-and-path-types&quot;&gt;
-elements of the interval for a De Morgan algebra&lt;/a&gt;. We can use the interval
+elements of the interval form a De Morgan algebra&lt;/a&gt;. We can use the interval
 value &lt;span class=inline-code&gt;i ∨ j&lt;/span&gt;: when &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;i0&lt;/tt&gt;, we get &lt;tt&gt;j&lt;/tt&gt;
 back and when &lt;tt&gt;i&lt;/tt&gt; is &lt;tt&gt;i1&lt;/tt&gt;, &lt;span class=inline-code&gt;i ∨ j&lt;/span&gt; collapses to &lt;tt&gt;i1&lt;/tt&gt;.
 &lt;/p&gt;
