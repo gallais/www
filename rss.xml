@@ -1,4 +1,239 @@
-<rss version="2.0"><channel><title>gallais&#39; blog</title><link>http://gallais.github.io/blog/</link><description>gallais&#39; blog</description><item><title>Ceci n&#39;est pas un default</title><link>http://gallais.github.io/blog/ceci-pas-default.html</link><description>&lt;head&gt;&lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot; href=&quot;http://gallais.github.io/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Ceci n&#39;est pas un default&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;
+<rss version="2.0"><channel><title>gallais&#39; blog</title><link>http://gallais.github.io/blog/</link><description>gallais&#39; blog</description><item><title>Poltergeist Types</title><link>http://gallais.github.io/blog/poltergeist-types.html</link><description>&lt;head&gt;&lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot; href=&quot;http://gallais.github.io/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Poltergeist Types&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;&lt;a href=&quot;https://wiki.haskell.org/Phantom_type&quot;&gt;Haskell wiki&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/idris-lang/Idris2/blob/5946442dc25aadd44d11955753c2d47c6f5027f6/libs/contrib/System/Directory/Tree.idr&quot;&gt;System.Directory.Tree&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;
+
+
+&lt;p id=chapo&gt;Phantom types are a well-known compile-time tool to ensure that
+illegal actions (such as attempting to write in a read-only file) are
+unrepresentable. In this blog post we introduce poltergeist types: phantom
+types whose parameters may still knock around at runtime.&lt;/p&gt;
+
+
+
+&lt;a name=&quot;ALightningIntroductionToPhantomTypes&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#ALightningIntroductionToPhantomTypes&quot;&gt;#&lt;/a&gt; A Lightning Introduction to Phantom Types&lt;/h3&gt;
+
+
+
+&lt;p&gt;
+A phantom type is a parametrised type whose parameters do not show up in
+the types of the (usually unique) constructor&#39;s arguments.
+They can be used to document whether the arguments are respecting some
+invariants. For instance the following definition declares a type of file
+handles parametrised by two booleans corresponding to whether the file has
+been opened with the ability to read and to write from it.&lt;/p&gt;
+
+
+
+&lt;p&gt;If we do not export the &lt;span class=inline-code&gt;MkHandle&lt;/span&gt; constructor
+then the only way for a user to manufacture a file handle is to use
+the functions we provide. We can make sure that these functions enforce
+that the parameters are always set to reflect the file handle&#39;s status.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;data Handle : (read, write : Bool) -&gt; Type where
+  MkHandle : AnyPtr -&gt; Path r w
+&lt;/p&gt;
+
+
+
+&lt;p&gt;We can now make sure that we only attempt to get a line from a file we
+are allowed to read from by insisting that the &lt;span class=inline-code&gt;read&lt;/span&gt;
+parameter of the handle we pass to &lt;span class=inline-code&gt;fGetLine&lt;/span&gt; is
+&lt;span class=inline-code&gt;True&lt;/span&gt;.
+Similarly we can restrict &lt;span class=inline-code&gt;fPutStr&lt;/span&gt; to file handles
+where we statically know that we are allowed to write.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;fGetLine : Handle True write -&gt; IO String
+fPutStr  : Handle read True -&gt; String -&gt; IO ()
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+Note that in both cases we only restrict the parameter of interest, leaving
+the other one as polymorphic as possible so that we may use
+&lt;span class=inline-code&gt;fGetLine&lt;/span&gt; with both read-only and read-write files.
+If we need to we can enfore more constraints or no constraints whatsoever
+e.g. reversing a file will require the ability to read and write to it but
+closing a handle is completely agnostic with respect to the handle&#39;s
+capabilities.
+&lt;/p&gt;
+
+
+
+&lt;p&gt;The example we just saw is set in a dependently typed language but is not
+specific to it. In OCaml for instance, we could define a largely similar
+interface with the exception that the parameters of the
+&lt;span class=inline-code&gt;Handle&lt;/span&gt; phantom type would be types themselves and
+not the boolean &lt;i&gt;values&lt;/i&gt; we used.
+
+Apart from this small change, the code would be largely the same and the runtime
+behaviour virtually identical. In particular all of the parameters would be
+erased at runtime
+&lt;a id=&quot;reftop1&quot; href=&quot;#refbot1&quot;&gt;[1]&lt;/a&gt;.
+&lt;/p&gt;
+
+
+
+&lt;p&gt;The dependently typed setting however allows us to ask whether we would
+sometimes want the parameters&#39; values to be available at runtime.
+&lt;/p&gt;
+
+
+
+&lt;a name=&quot;PoltergeistTypes&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#PoltergeistTypes&quot;&gt;#&lt;/a&gt; Poltergeist Types&lt;/h3&gt;
+
+
+
+&lt;p&gt;
+For this case study we want to devise a high level representation of a directory
+tree. Up until now the only way to interact with the file system in Idris was to
+use some very low-level primitives: &lt;span class=inline-code&gt;openDir&lt;/span&gt; would take
+a string and, provided that it represents a valid directory path, would return a
+pointer representing the directory.
+You could then repeatedly call &lt;span class=inline-code&gt;dirEntry&lt;/span&gt; with that
+pointer to get your hands on directory entries one by one. Once you were done
+you would need to remember to call (exactly once!)
+&lt;span class=inline-code&gt;closeDir&lt;/span&gt; to free the pointer.
+This leads to extremely imperative code with no separation of concerns:
+in any function the exploration of the directory tree is intimately interleaved
+with the function&#39;s own internal logic.
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+Our solution is to describe a directory tree as a record containing
+a list of file names and
+a list of directory names each paired with an &lt;span class=inline-code&gt;IO&lt;/span&gt;
+computation delivering the tree corresponding to the subdirectory. We can
+provide a generic function building such a tree and then users can explore
+it without having to bother with manipulating pointers.
+The final decision is to pick how to represent these file names and directory
+names.
+We could use absolute paths but that would involve a lot of information
+duplication as all the names in the tree share a common prefix.
+We could alternatively use base names but that would force users
+to reconstruct absolute paths when exploring the tree if they actually need
+them which seems like an error-prone process.
+Instead we opt for a phantom type: a &lt;span class=inline-code&gt;FileName&lt;/span&gt; is
+parametrised by its root but only stores the basename as a string.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;data FileName : Path -&gt; Type where
+  MkFileName : String -&gt; FileName root
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+And here is where we depart from classic phantom types: a user needing
+access to the full file path can call &lt;span class=inline-code&gt;toFilePath&lt;/span&gt;
+on a &lt;span class=inline-code&gt;FileName root&lt;/span&gt;
+which will, provided that the &lt;span class=inline-code&gt;root&lt;/span&gt; is runtime-relevant,
+compute the appropriate answer.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;toFilePath : {root : Path} -&gt; FileName root -&gt; String
+toFilePath file = show (root /&gt; file)
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+We can finally give the definition of a &lt;span class=inline-code&gt;Tree&lt;/span&gt; we only
+sketched earlier. A tree is a record anchored at a &lt;span class=inline-code&gt;root&lt;/span&gt;
+and it comprises a list of file names as well as a list of subtrees both of
+which are anchored at that same root.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;record Tree (root : Path) where
+  constructor MkTree
+  files    : List (FileName root)
+  subTrees : List (SubTree root)
+&lt;/p&gt;
+
+
+
+&lt;p&gt;
+The key definition is that of the notion of subtrees. It is a dependent pair
+storing a file name (the name of the directory) and an IO computation returning
+a tree anchored at the parent&#39;s root extended with the name of the subdirectory.
+This definition gives us the best of both worlds: the file names are only
+storing the base names, but the user never has to explicitly reconstruct the
+path when they explore a given tree. Indeed our definition guarantees
+that the path is automatically extended when entering a subdirectory, and that
+this extended path is used when calling &lt;span class=inline-code&gt;toFilePath&lt;/span&gt;.
+&lt;p&gt;
+
+&lt;p class=code&gt;SubTree : Path -&gt; Type
+SubTree root = (dir : FileName root ** IO (Tree (root /&gt; dir)))
+&lt;/p&gt;
+
+&lt;/p&gt;
+When writing a function consuming a &lt;span class=inline-code&gt;Tree&lt;/span&gt; we can leave
+the parameter implicit (marking it erased or not depending on whether we
+actually need this information at runtime)
+and let Idris reconstruct the appropriate value by unification when performing
+a recursive call.
+We show below the type of two different traversals provided by the
+&lt;span class=inline-code&gt;System.Directory.Tree&lt;/span&gt; library:
+&lt;span class=inline-code&gt;print&lt;/span&gt; only uses base names to display the tree in the
+console and as such its &lt;span class=inline-code&gt;root&lt;/span&gt; argument is guaranteed to
+be erased. The &lt;span class=inline-code&gt;findFile&lt;/span&gt; function however looks for a
+file whose basename matches a given string and returns a full path. As such it
+needs to have access to the value of &lt;span class=inline-code&gt;root&lt;/span&gt; and that is
+why it is explicitly introduced with an unrestricted modality.
+&lt;/p&gt;
+
+
+
+&lt;p class=code&gt;print    : Tree root -&gt; IO ()
+findFile : {root : Path} -&gt; String -&gt; Tree root -&gt; IO (Maybe Path)
+&lt;/p&gt;
+
+
+
+&lt;a name=&quot;Conclusion&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Conclusion&quot;&gt;#&lt;/a&gt; Conclusion&lt;/h3&gt;
+
+
+
+&lt;p&gt;
+We have seens that instead of storing potentially useless information in a data
+structure, or forcing users to carefully reconstruct it on the fly were they to
+need it, we can instead parametrise our data structure over this information in
+such a way that if it is needed then it will be automatically reconstructed by
+the type system for us.
+
+This gives us a new kind of types that are phantom in the sense that their
+payloads are not influenced by their parameters but whose parameters may yet
+manifest themselves physically at runtime. We call them poltergeists.
+&lt;/p&gt;
+
+&lt;a name=&quot;Footnotes&quot; /&gt;
+&lt;h3&gt;&lt;a class=&quot;sectionref&quot; href=&quot;#Footnotes&quot;&gt;#&lt;/a&gt; Footnotes&lt;/h3&gt;&lt;div class=&quot;footnotes&quot;&gt;&lt;p class=&quot;footnote&quot;&gt;&lt;div class=&quot;footnote-number&quot;&gt;&lt;a id=&quot;refbot1&quot; href=&quot;#reftop1&quot;&gt;[1]&lt;/a&gt;&lt;/div&gt;&lt;div class=&quot;footnote-body&quot;&gt;
+In Idris the variables in a type that are not explicitly bound are implicitly
+universally quantified in a prenex position with quantity 0 i.e. they are
+runtime-irrelevant.
+In the type of &lt;span class=inline-code&gt;fGetLine&lt;/span&gt; for instance, the boolean
+variable &lt;span class=inline-code&gt;write&lt;/span&gt; is therefore universally quantified,
+and marked as erased.
+The same thing applies to the variable &lt;span class=inline-code&gt;read&lt;/span&gt; in the
+type of &lt;span class=inline-code&gt;fPutStr&lt;/span&gt;.
+&lt;/div&gt;&lt;/p&gt;&lt;/div&gt;</description><guid isPermaLink="true">http://gallais.github.io/blog/poltergeist-types.html</guid><pubDate>Fri, 16 Apr 2021 13:37:00 UTC</pubDate></item><item><title>Ceci n&#39;est pas un default</title><link>http://gallais.github.io/blog/ceci-pas-default.html</link><description>&lt;head&gt;&lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot; href=&quot;http://gallais.github.io/css/main.css&quot; /&gt;&lt;/head&gt;&lt;span style=&quot;float:right&quot;&gt;&lt;a href=&quot;/rss.xml&quot;&gt;&lt;img src=&quot;/img/rss.png&quot; /&gt;&lt;/a&gt;&lt;/span&gt;&lt;h1&gt;Ceci n&#39;est pas un default&lt;/h1&gt;&lt;div class=bdocs&gt;&lt;ul&gt;&lt;li&gt;
     &lt;a href=&quot;https://github.com/gallais/potpourri/blob/a20fed3c4b7e46c0683eba55788d07f09bbaf776/haskell/defaulting/Default.hs&quot;&gt;Default.hs&lt;/a&gt;
 &lt;/li&gt;
 &lt;li&gt;
